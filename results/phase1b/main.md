@@ -1,4 +1,4 @@
-## main (12 seeds, synthetic AgentX-calibrated workload, assumed hardware constants; 134s)
+## main (12 seeds, synthetic AgentX-calibrated workload, assumed hardware constants; 150s)
 
 | setting | policy | excess prefill GPU-s (mean) | vs recompute: Δ ± 95% CI | Δ% | ΔTTFT mean (s) | killed turns | notice GB | replication GB | budget ratio |
 |---|---|---|---|---|---|---|---|---|---|
@@ -31,4 +31,4 @@
 | correlated, W=120s | drain_local | 2307 | -25 ± 140 | -1% | +0.21 | 1.0 | 0 | 0 | 0.69 |
 | correlated, W=120s | evacuate | 1365 | -967 ± 314 | -41% | +0.14 | 1.1 | 1044 | 0 | 0.69 |
 | correlated, W=120s | replicate | 953 | -1378 ± 353 | -59% | +0.11 | 20.5 | 0 | 42851 | 0.69 |
-| correlated, W=120s | hybrid | 940 | -1392 ± 379 | -60% | +0.14 | 1.0 | 723 | 40051 | 0.69 |
+| correlated, W=120s | hybrid | 942 | -1390 ± 380 | -60% | +0.14 | 1.0 | 723 | 40051 | 0.69 |

@@ -96,6 +96,23 @@ bursts exceed that, so even a 200 MB/s budget drops updates. **With a shared sto
 evacuation alone beats write-through. Hybrid is robust because evacuation fills
 exactly the gaps that dropped writes leave.**
 
+### 4b. Replicas on an object store (`results/phase1b/remote_replica.md`)
+
+This is closest to vLLM's write-through to its object-store tier (`tiering/obj`). It
+uses no DRAM for replicas, but each failover must fetch the replica back (0.8 GB/s
+assumed).
+
+| replication budget | W | replicate | hybrid | evacuate |
+|---|---|---|---|---|
+| unlimited | 30 s | −58% | −59% | −23% |
+| unlimited | 120 s | −60% | −57% | −43% |
+| 83 MB/s | 30 s | −32% | −48% | −23% |
+| 83 MB/s | 120 s | −32% | −50% | −43% |
+
+Restore latency barely matters: agent sessions usually idle long enough for the
+fetch to finish before the next turn. **Write bandwidth is what binds.** With a
+realistic shared budget, hybrid beats write-through by about 16–18 points.
+
 ## 5. Reuse prediction (`results/phase1b/reuse.md`)
 
 | W | fixed P=0.9 | recency (idle time) | oracle |
@@ -141,7 +158,7 @@ and write-through more so. With the fix and 12 seeds:
 - Hardware constants are assumed. Phase 2 measures them. The *orderings* must
   survive calibration, not the percentages.
 - The workload is synthetic. The real AgentX replay is blocked on data access.
-- Replica updates land instantly, and there is no restore latency from a replica.
-  Both flatter write-through.
+- Replica updates land instantly, which flatters write-through. Restore latency from
+  an object-store replica is modelled in §4b; from a peer's DRAM tier it is zero.
 - Evacuation traffic does not slow serving. This flatters evacuation.
 - Decode is not modelled as contending; prefill is serialized per node.

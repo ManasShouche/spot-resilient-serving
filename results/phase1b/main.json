@@ -7717,11 +7717,11 @@
    },
    "hybrid": {
     "turns": 77054,
-    "prefill_gpu_s": 47272.2,
-    "lost_prefill_gpu_s": 111.8,
-    "lost_tokens_M": 0.42,
+    "prefill_gpu_s": 47290.8,
+    "lost_prefill_gpu_s": 119.0,
+    "lost_tokens_M": 0.47,
     "killed_turns": 0,
-    "affected_turns": 7,
+    "affected_turns": 8,
     "added_latency_p50_s": 20.14,
     "added_latency_p99_s": 96.08,
     "notice_egress_GB": 627.0,
@@ -7733,8 +7733,8 @@
     "cache_hit_rate": 0.985,
     "ttft_mean_s": 1.42,
     "ttft_p50_s": 0.31,
-    "ttft_p99_s": 17.62,
-    "excess": 338.11369631092384,
+    "ttft_p99_s": 17.64,
+    "excess": 356.7416067109225,
     "ttft_mean_excess": 0.010000000000000009
    }
   },

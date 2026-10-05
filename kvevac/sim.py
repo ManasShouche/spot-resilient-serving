@@ -73,6 +73,10 @@ class FleetConfig:
     """Used by ReuseModel.FIXED."""
     reuse_model: ReuseModel = ReuseModel.FIXED
     partial_prefix: bool = False
+    replica_restore_link: LinkProfile | None = None
+    """If set, replicas live on remote capacity (e.g. vLLM's object-store tier) and a
+    failover must first fetch the replica over this link. None: a peer's local tier,
+    which restores without delay."""
     """Let the planner fill leftover notice time with partial session prefixes."""
     contention: bool = True
     replication_bytes_per_s: float | None = None
@@ -258,9 +262,13 @@ class Simulation:
         turn = state.session.turns[state.next_turn]
         node = self.nodes.get(state.node) if state.node else None
         if node is None or not node.alive or node.draining:
-            replica = self._take_replica(session_id)
+            replica = self._take_replica(session_id, now)
             if replica is not None:
                 node = replica
+                if state.available_at > now:
+                    state.node = node.id
+                    self._push(state.available_at, "turn", (session_id, requested))
+                    return
             else:
                 if node is not None and session_id in node.cache:
                     state.lost_by_reclaim = True  # its cache is on a node about to vanish
@@ -411,7 +419,7 @@ class Simulation:
             return recency_reuse_prob(0.0 if in_flight else now - state.last_active)
         return self.fleet.session_reuse_prob
 
-    def _take_replica(self, session_id: str) -> NodeState | None:
+    def _take_replica(self, session_id: str, now: float) -> NodeState | None:
         """Fail a session over to its live replica, promoting the replica to primary."""
         if self.policy not in (Policy.REPLICATE, Policy.HYBRID):
             return None
@@ -426,6 +434,9 @@ class Simulation:
         self._insert(replica, session_id, held)
         state.replica = None
         state.lost_by_reclaim = False
+        if self.fleet.replica_restore_link is not None:
+            state.available_at = now + transfer_s(held, self.model,
+                                                  self.fleet.replica_restore_link)
         return replica
 
     def _replica_is_current(self, session_id: str, tokens: int, doomed_ids: set[str]) -> bool:
@@ -463,17 +474,9 @@ class Simulation:
             if state.node == node_id:
                 state.lost_by_reclaim = True
                 state.node = None
-                if self.policy in (Policy.REPLICATE, Policy.HYBRID) and state.replica:
-                    replica = self.nodes[state.replica]
-                    held = replica.replicas.get(session_id) if self.fleet.replica_tokens \
-                        else replica.cache.get(session_id)
-                    if replica.alive and held:
-                        if self.fleet.replica_tokens:
-                            replica.replicas.pop(session_id)
-                            self._insert(replica, session_id, held)
-                        state.node = replica.id
-                        state.replica = None
-                        state.lost_by_reclaim = False
+                replica = self._take_replica(session_id, now)
+                if replica is not None:
+                    state.node = replica.id
         node.cache.clear()
         node.replicas.clear()
         for session_id, (_, context, _output) in list(node.in_flight.items()):

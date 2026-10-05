@@ -104,3 +104,16 @@ def test_killed_turn_restarts_where_its_kv_was_evacuated(workload) -> None:
     evac = run(workload, events, Policy.EVACUATE, fleet=FLEET, **KW)
     drain = run(workload, events, Policy.DRAIN_LOCAL, fleet=FLEET, **KW)
     assert evac.lost_tokens <= drain.lost_tokens
+
+
+def test_remote_replicas_delay_failover_turns() -> None:
+    busy = synthetic_sessions(400, arrival_window_s=3600, seed=2)
+    events = independent_reclaims(NODES, rate_per_node_h=0.3, horizon_s=4 * 3600,
+                                  notice_s=0.0, seed=8)
+    local = run(busy, events, Policy.REPLICATE,
+                fleet=FleetConfig(replica_tokens=4_000_000), **KW)
+    remote = run(busy, events, Policy.REPLICATE,
+                 fleet=FleetConfig(replica_tokens=4_000_000,
+                                   replica_restore_link=LINKS["object-store"]), **KW)
+    assert remote.affected_turns > local.affected_turns
+    assert sum(remote.added_latency_s) > sum(local.added_latency_s)

@@ -209,6 +209,21 @@ def exp_backpressure() -> list[Setting]:
     return settings
 
 
+def exp_remote_replica() -> list[Setting]:
+    """vLLM-style write-through to an object-store tier: replicas cost no DRAM, but are
+    bandwidth-limited on the way in and must be fetched back on failover."""
+    store = LINKS["object-store"]
+    settings = []
+    for budget in (None, 83e6):
+        fleet = FleetConfig(replica_tokens=4_000_000, replica_restore_link=store,
+                            replication_bytes_per_s=budget)
+        name = "unlimited" if budget is None else f"{budget / 1e6:.0f} MB/s"
+        for notice in (30, 120):
+            settings.append(Setting(f"store replicas, {name}, W={notice:g}s",
+                                    notice_s=notice, fleet=fleet))
+    return settings
+
+
 EXPERIMENTS = {
     "main": (exp_main, None),
     "budget": (exp_budget, (Policy.RECOMPUTE, Policy.EVACUATE)),
@@ -216,6 +231,8 @@ EXPERIMENTS = {
     "reuse": (exp_reuse, (Policy.RECOMPUTE, Policy.EVACUATE)),
     "partial": (exp_partial, (Policy.RECOMPUTE, Policy.EVACUATE, Policy.HYBRID)),
     "equal_memory": (exp_equal_memory, None),
+    "remote_replica": (exp_remote_replica,
+                       (Policy.RECOMPUTE, Policy.EVACUATE, Policy.REPLICATE, Policy.HYBRID)),
     "backpressure": (exp_backpressure,
                      (Policy.RECOMPUTE, Policy.EVACUATE, Policy.REPLICATE, Policy.HYBRID)),
 }
