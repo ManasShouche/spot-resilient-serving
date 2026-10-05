@@ -85,9 +85,14 @@ self_destroy() {
 
 finish() {
   status=$?
+  trap '' TERM INT  # cleanup (push + destroy) must not be interrupted
   log "job exiting with status $status"
   if [ -n "${WATCHER_PID:-}" ]; then
-    pkill -P "$WATCHER_PID" 2>/dev/null; kill "$WATCHER_PID" 2>/dev/null
+    # Kill the watcher before its sleep: killing the sleep first would let the
+    # watcher go on to signal this script mid-cleanup.
+    sleepers="$(pgrep -P "$WATCHER_PID" 2>/dev/null || true)"
+    kill "$WATCHER_PID" 2>/dev/null
+    [ -n "$sleepers" ] && kill $sleepers 2>/dev/null
   fi
   [ -n "${VLLM_PID:-}" ] && kill "$VLLM_PID" 2>/dev/null
   push_results
