@@ -70,7 +70,10 @@ def measure_interference(base_url: str, model: str, *, context: int, repeats: in
         median = statistics.median(loaded)
         rows.append({"rate_gbps": rate, "label": "max" if rate == 0 else f"{rate:g} GB/s",
                      "ttft_s": loaded, "ttft_median_s": median,
-                     "slowdown": round(median / idle_median - 1, 4), "load": dict(report)})
+                     "slowdown": round(median / idle_median - 1, 4), "load": dict(report),
+                     # No achieved rate means the load generator died: the "slowdown" is
+                     # then meaningless and must not be used for calibration.
+                     "load_failed": "achieved_gbps" not in report})
     return {"context_tokens": context, "repeats": repeats, "rows": rows}
 
 
@@ -93,8 +96,9 @@ def main() -> None:
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(result, indent=1))
     for row in result["rows"]:
+        flag = "  [LOAD FAILED: ignore this row]" if row.get("load_failed") else ""
         print(f"{row['label']:>10}: TTFT median {row['ttft_median_s']:.3f}s, "
-              f"slowdown {row['slowdown']:+.1%}")
+              f"slowdown {row['slowdown']:+.1%}{flag}")
 
 
 if __name__ == "__main__":
