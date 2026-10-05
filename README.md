@@ -35,7 +35,9 @@ at zero steady-state cost?
 - [x] Phase 3 design against vLLM's KV tiering ([docs/phase3-design.md](docs/phase3-design.md)).
 - [ ] Real AgentX trace replay (blocked on data access from this environment).
 - [ ] Phase 2: calibrate the cost model on real GPUs and links
-  ([docs/calibration.md](docs/calibration.md)).
+  ([docs/calibration.md](docs/calibration.md)). The tooling (measurement client,
+  fitting, `--calibration`) is ready and tested against fakes; it **needs GPU
+  access to run**.
 - [ ] Phase 3: a vLLM implementation. An IMDS notice handler pauses admission and
   ships session KV through the KV connector / P2P tier. Output-parity test.
 - [ ] Phase 4: live FIS-triggered reclaims, then the write-up.
@@ -51,15 +53,19 @@ uv venv -p 3.12 .venv && uv pip install -p .venv/bin/python -e ".[dev]"
 
 ## Layout
 ```
-kvevac/profiles.py   model / GPU / link constants (assumed until Phase 2)
-kvevac/costmodel.py  recompute vs transfer time, crossover
-kvevac/planner.py    deadline-bounded evacuation knapsack (the core decision)
-kvevac/workload.py   agent sessions (synthetic, AgentX-calibrated) + real-trace loader
-kvevac/sim.py        discrete-event fleet simulation, four policies
-kvevac/sweep.py      regime sweep CLI (v0)
-kvevac/experiments.py  Phase 1b experiments with paired 95% CIs
-kvevac/reuse.py      session reuse estimators (fixed / recency / oracle)
-kvevac/notice/imds.py  IMDSv2 mock + spot-notice watcher
+kvevac/profiles.py        model / GPU / link constants (assumed until Phase 2)
+kvevac/costmodel.py       recompute vs transfer time, crossover
+kvevac/planner.py         deadline-bounded evacuation knapsack (the core decision)
+kvevac/flush.py           session plan -> prefix-ordered, deduplicated block flush order
+kvevac/reuse.py           session reuse estimators (fixed / recency / oracle)
+kvevac/workload.py        agent sessions (synthetic, AgentX-calibrated) + real-trace loader
+kvevac/sim.py             discrete-event fleet simulation, five policies
+kvevac/experiments.py     Phase 1b experiments with paired 95% CIs (--calibration aware)
+kvevac/calibration.py     fit cost-model constants from measurements
+kvevac/measure/prefill.py Phase 2: cold-prefill TTFT + decode-rate client for vLLM
+kvevac/notice/imds.py     IMDSv2 mock + spot-notice watcher (real EC2 paths)
+kvevac/notice/handler.py  notice handler: timeline log, vLLM pause, evacuation hook
+scripts/figures.py        SVG figures from results JSON
 ```
 
 ## What this project does not do
