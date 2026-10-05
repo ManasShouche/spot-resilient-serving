@@ -31,16 +31,23 @@ constants, synthetic workload* until Phases 2 and 3 replace those parts.
 ## Known gaps, and the direction each one biases results
 | Gap | Biases toward |
 |---|---|
-| No queueing or contention: rebuilding costs GPU-seconds but never delays other requests | Understates every loss, and understates the value of avoiding recompute |
+| Prefill is serialized per node (v1b), but decode is not modelled as contending | Understates losses under heavy decode load |
 | Evacuation traffic doesn't slow serving on the source or destination | Favours `evacuate` |
-| `replicate` protects only completed turns; in-flight KV isn't streamed (KevlarFlow streams it) | Against `replicate` on killed turns |
+| `replicate` protects only completed turns; in-flight KV isn't streamed (KevlarFlow streams it). `hybrid` covers this at notice | Against `replicate` on killed turns |
+| Replica updates land instantly; the bandwidth budget models only drops | Favours `replicate`/`hybrid` |
 | The replica tier in the default sweep is as large as the primary cache | Favours `replicate` |
 | Reuse probability is a fixed 0.9 for every session; no prediction | Neutral now; a real estimator could help `evacuate` |
 | Session-granular prefixes: no block-level partial hits, no cross-session sharing | Unknown; cross-session sharing would favour `recompute` |
 | Correlated bursts hit a single failure group; destinations outside it are assumed safe | Favours `evacuate` under truly correlated multi-group reclaims |
 | All hardware constants are assumed (`kvevac/profiles.py`) | Unknown until Phase 2 |
 
-## v0 regime map (5 seeds, synthetic, assumed constants)
+## v0 regime map (superseded by docs/phase1b-results.md)
+
+The v0 results below used a lightly loaded fleet with no contention. The "less
+egress" comparison compared totals, not rates; see the correction in
+`docs/phase1b-results.md` §5.
+
+### v0 (5 seeds, synthetic, assumed constants)
 Full table: `results/sweep_v0_synthetic.md`. Excess prefill GPU-seconds,
 mean ± sd, independent reclaims, 25GbE:
 

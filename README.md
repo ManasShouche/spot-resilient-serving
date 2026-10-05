@@ -18,8 +18,16 @@ at zero steady-state cost?
   agent-session workload generator, discrete-event simulator, regime sweep
   ([docs/simulator.md](docs/simulator.md)). Results are **simulated with assumed
   constants and a synthetic workload**.
-- [ ] Phase 1b: hybrid policy (replicate + evacuate), sensitivity to cache size, model
-  size and egress contention, and a real AgentX trace replay.
+- [x] **Phase 1b:** prefill contention, hybrid policy, shared destination ingress,
+  write-through backpressure, reuse-prediction ablation, and paired-statistics
+  experiments. **Headline (simulated):** write-through plus write-back at notice
+  (hybrid) cuts reclaim-induced recompute by 55–65% with ≥ 30 s notice. Evacuation's
+  benefit tracks ρ = notice × bandwidth / resident KV. Write-through alone collapses
+  under load. See [docs/phase1b-results.md](docs/phase1b-results.md).
+- [x] Spot-notice harness: IMDSv2 mock and watcher on the real EC2 paths
+  (`kvevac/notice/imds.py`).
+- [x] Phase 3 design against vLLM's KV tiering ([docs/phase3-design.md](docs/phase3-design.md)).
+- [ ] Real AgentX trace replay (blocked on data access from this environment).
 - [ ] Phase 2: calibrate the cost model on real GPUs and links
   ([docs/calibration.md](docs/calibration.md)).
 - [ ] Phase 3: a vLLM implementation. An IMDS notice handler pauses admission and
@@ -30,7 +38,7 @@ at zero steady-state cost?
 ```bash
 uv venv -p 3.12 .venv && uv pip install -p .venv/bin/python -e ".[dev]"
 .venv/bin/python -m pytest
-.venv/bin/python -m kvevac.sweep --seeds 5 --replica-tokens 2000000
+.venv/bin/python -m kvevac.experiments all --seeds 6 --out results/phase1b
 ```
 
 ## Layout
@@ -40,7 +48,10 @@ kvevac/costmodel.py  recompute vs transfer time, crossover
 kvevac/planner.py    deadline-bounded evacuation knapsack (the core decision)
 kvevac/workload.py   agent sessions (synthetic, AgentX-calibrated) + real-trace loader
 kvevac/sim.py        discrete-event fleet simulation, four policies
-kvevac/sweep.py      regime sweep CLI
+kvevac/sweep.py      regime sweep CLI (v0)
+kvevac/experiments.py  Phase 1b experiments with paired 95% CIs
+kvevac/reuse.py      session reuse estimators (fixed / recency / oracle)
+kvevac/notice/imds.py  IMDSv2 mock + spot-notice watcher
 ```
 
 ## What this project does not do
