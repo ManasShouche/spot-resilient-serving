@@ -87,3 +87,13 @@ def test_draining_sessions_fail_over_to_their_live_replica(workload) -> None:
 def test_budget_ratio_is_recorded_per_reclaimed_node(workload) -> None:
     metrics = run(workload, reclaims(60.0), Policy.RECOMPUTE, fleet=FLEET, **KW)
     assert metrics.budget_ratios and all(r > 0 for r in metrics.budget_ratios)
+
+
+def test_tight_replication_budget_drops_updates_and_loses_more(workload) -> None:
+    events = reclaims(0.0)
+    roomy = run(workload, events, Policy.REPLICATE,
+                fleet=FleetConfig(replica_tokens=4_000_000), **KW)
+    tight = run(workload, events, Policy.REPLICATE,
+                fleet=FleetConfig(replica_tokens=4_000_000, replication_bytes_per_s=2e6), **KW)
+    assert roomy.replication_drops == 0 < tight.replication_drops
+    assert tight.lost_tokens >= roomy.lost_tokens

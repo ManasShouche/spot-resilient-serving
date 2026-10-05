@@ -40,6 +40,8 @@ from kvevac.profiles import GpuProfile, LinkProfile, ModelProfile
 from kvevac.reuse import ReuseModel, recency_reuse_prob
 from kvevac.workload import Session, quantile
 
+REPLICATION_MAX_QUEUE_S = 5.0
+
 
 class Policy(StrEnum):
     RECOMPUTE = "recompute"
@@ -71,6 +73,10 @@ class FleetConfig:
     """Used by ReuseModel.FIXED."""
     reuse_model: ReuseModel = ReuseModel.FIXED
     contention: bool = True
+    replication_bytes_per_s: float | None = None
+    """Per-node write-through budget. When the replication queue exceeds
+    REPLICATION_MAX_QUEUE_S, the update is dropped and the replica goes stale (the
+    shape of vLLM's ThrottledDropPolicy). None means unlimited bandwidth."""
 
 
 @dataclass
@@ -87,6 +93,7 @@ class NodeState:
     """session id -> (finish time, context tokens, output tokens)."""
     prefill_free_at: float = 0.0
     ingress_free_at: float = 0.0
+    replication_free_at: float = 0.0
     """When this node's inbound link is next free (shared by concurrent evacuations)."""
 
     def used(self) -> int:
@@ -109,8 +116,13 @@ class Metrics:
     ttft_s: list[float] = field(default_factory=list)
     input_tokens: int = 0
     prefilled_tokens: int = 0
+    replication_drops: int = 0
+    first_event_s: float = 0.0
+    last_event_s: float = 0.0
     budget_ratios: list[float] = field(default_factory=list)
     """Per reclaimed node: notice x link bandwidth / KV bytes resident at notice."""
+
+    nodes: int = 1
 
     def summary(self) -> dict[str, float]:
         latency = self.added_latency_s or [0.0]
@@ -128,6 +140,10 @@ class Metrics:
             "evacuated_sessions": self.evacuated_sessions,
             "budget_ratio_mean": round(sum(self.budget_ratios) / max(1, len(self.budget_ratios)),
                                        2),
+            "replication_drops": self.replication_drops,
+            "replication_MBps_per_node": round(
+                self.replication_egress_bytes / 1e6
+                / max(1.0, self.last_event_s - self.first_event_s) / self.nodes, 2),
             "cache_hit_rate": round(1 - self.prefilled_tokens / max(1, self.input_tokens), 3),
             "ttft_mean_s": round(sum(self.ttft_s) / max(1, len(self.ttft_s)), 2),
             "ttft_p50_s": round(quantile(self.ttft_s or [0.0], 0.5), 2),
@@ -182,7 +198,7 @@ class Simulation:
         self.policy = policy
         self.fleet = fleet
         self.model, self.gpu, self.link, self.store = model, gpu, link, store
-        self.metrics = Metrics()
+        self.metrics = Metrics(nodes=len(fleet.groups) * fleet.nodes_per_group)
         self.nodes: dict[str, NodeState] = {}
         for group in fleet.groups:
             for index in range(fleet.nodes_per_group):
@@ -202,8 +218,11 @@ class Simulation:
         heapq.heappush(self._events, (at, next(self._seq), kind, payload))
 
     def run(self) -> Metrics:
+        if self._events:
+            self.metrics.first_event_s = self._events[0][0]
         while self._events:
             now, _, kind, payload = heapq.heappop(self._events)
+            self.metrics.last_event_s = now
             getattr(self, f"_on_{kind}")(now, *payload)
         return self.metrics
 
@@ -283,14 +302,15 @@ class Simulation:
         if node.alive:
             self._insert(node, session_id, context + output)
             if self.policy in (Policy.REPLICATE, Policy.HYBRID):
-                self._replicate(node, state, context + output)
+                self._replicate(now, node, state, context + output)
         state.next_turn += 1
         if state.next_turn < len(state.session.turns):
             turn = state.session.turns[state.next_turn]
             self._push(max(now, state.session.start_s + turn.offset_s), "turn",
                        (session_id, None))
 
-    def _replicate(self, node: NodeState, state: SessionState, tokens: int) -> None:
+    def _replicate(self, now: float, node: NodeState, state: SessionState,
+                   tokens: int) -> None:
         replica = self.nodes.get(state.replica) if state.replica else None
         if replica is None or not replica.alive or replica.group == node.group:
             candidates = [n for n in self._live_nodes() if n.group != node.group]
@@ -301,6 +321,14 @@ class Simulation:
         else:
             held = (replica.replicas if self.fleet.replica_tokens else replica.cache)
             shipped = max(0, tokens - held.get(state.session.id, 0))
+        budget = self.fleet.replication_bytes_per_s
+        if budget:
+            if node.replication_free_at - now > REPLICATION_MAX_QUEUE_S:
+                self.metrics.replication_drops += 1
+                return  # dropped under backpressure: the replica stays stale
+            start = max(now, node.replication_free_at)
+            # Simplification: the replica is updated immediately, not at queue drain.
+            node.replication_free_at = start + kv_bytes(shipped, self.model) / budget
         state.replica = replica.id
         if self.fleet.replica_tokens:
             replica.replicas.pop(state.session.id, None)
