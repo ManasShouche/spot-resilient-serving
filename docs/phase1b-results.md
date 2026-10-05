@@ -9,6 +9,7 @@ are in `results/phase1b/`. Reproduce with:
 
 ```bash
 python -m kvevac.experiments all --seeds 12 --out results/phase1b
+python scripts/figures.py   # regenerates docs/figures/*.svg from the JSON
 ```
 
 Default: 12 nodes in 3 failure groups, 4M-token session cache per node, 800 sessions
@@ -50,6 +51,8 @@ it is never significantly better than doing nothing.
 
 ## 2. The governing ratio (`results/phase1b/budget.md`)
 
+![Evacuation benefit vs notice budget ρ](figures/budget_ratio.svg)
+
 | link | W=15 s | 30 s | 60 s | 120 s |
 |---|---|---|---|---|
 | 10GbE (ρ ≈ 0.05–0.40) | −9% | −11% | −11% | −19% |
@@ -80,6 +83,8 @@ latency are. Restore latency from a remote store is not modelled for write-throu
 which flatters it.
 
 ## 4. Write-through under a bandwidth budget (`results/phase1b/backpressure.md`)
+
+![Write-through vs hybrid vs evacuation under a replication bandwidth budget](figures/backpressure.svg)
 
 A per-node replication budget with drop-on-backpressure, in the shape of vLLM's
 `ThrottledDropPolicy`. W = 120 s.

@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 420" width="720" height="420" font-family="Inter, system-ui, sans-serif" role="img" aria-label="Write-through degrades under a bandwidth budget; hybrid does not">
+<rect width="720" height="420" fill="#fcfcfb"/>
+<text x="72" y="24" font-size="15" font-weight="600" fill="#0b0b0b">Write-through degrades under a bandwidth budget; hybrid does not</text>
+<text x="72" y="44" font-size="11.5" fill="#52514e">Policy vs recompute, 12 seeds, mean ± 95% CI (paired).</text>
+<text x="72" y="59" font-size="11.5" fill="#52514e">Simulated: synthetic agent workload, assumed hardware constants.</text>
+<line x1="72" x2="570" y1="356.0" y2="356.0" stroke="#e4e3df" stroke-width="1"/>
+<text x="64" y="360.0" font-size="11" fill="#52514e" text-anchor="end">0%</text>
+<line x1="72" x2="570" y1="321.0" y2="321.0" stroke="#e4e3df" stroke-width="1"/>
+<text x="64" y="325.0" font-size="11" fill="#52514e" text-anchor="end">10%</text>
+<line x1="72" x2="570" y1="286.0" y2="286.0" stroke="#e4e3df" stroke-width="1"/>
+<text x="64" y="290.0" font-size="11" fill="#52514e" text-anchor="end">20%</text>
+<line x1="72" x2="570" y1="251.0" y2="251.0" stroke="#e4e3df" stroke-width="1"/>
+<text x="64" y="255.0" font-size="11" fill="#52514e" text-anchor="end">30%</text>
+<line x1="72" x2="570" y1="216.0" y2="216.0" stroke="#e4e3df" stroke-width="1"/>
+<text x="64" y="220.0" font-size="11" fill="#52514e" text-anchor="end">40%</text>
+<line x1="72" x2="570" y1="181.0" y2="181.0" stroke="#e4e3df" stroke-width="1"/>
+<text x="64" y="185.0" font-size="11" fill="#52514e" text-anchor="end">50%</text>
+<line x1="72" x2="570" y1="146.0" y2="146.0" stroke="#e4e3df" stroke-width="1"/>
+<text x="64" y="150.0" font-size="11" fill="#52514e" text-anchor="end">60%</text>
+<line x1="72" x2="570" y1="111.0" y2="111.0" stroke="#e4e3df" stroke-width="1"/>
+<text x="64" y="115.0" font-size="11" fill="#52514e" text-anchor="end">70%</text>
+<line x1="72" x2="570" y1="76.0" y2="76.0" stroke="#e4e3df" stroke-width="1"/>
+<text x="64" y="80.0" font-size="11" fill="#52514e" text-anchor="end">80%</text>
+<text transform="translate(18,216.0) rotate(-90)" font-size="11.5" fill="#52514e" text-anchor="middle">Reduction in reclaim-induced recompute</text>
+<text x="134.2" y="374" font-size="11" fill="#52514e" text-anchor="middle">unlimited</text>
+<text x="258.8" y="374" font-size="11" fill="#52514e" text-anchor="middle">200 MB/s</text>
+<text x="383.2" y="374" font-size="11" fill="#52514e" text-anchor="middle">83 MB/s (shared store)</text>
+<text x="507.8" y="374" font-size="11" fill="#52514e" text-anchor="middle">40 MB/s</text>
+<text x="321.0" y="398" font-size="11.5" fill="#52514e" text-anchor="middle">Per-node write-through bandwidth budget (drop on backpressure); notice W = 120 s</text>
+<path d="M125.2,154.9 L249.8,200.6 L374.2,269.5 L498.8,282.7" fill="none" stroke="#2a78d6" stroke-width="2"/>
+<line x1="125.2" x2="125.2" y1="218.9" y2="90.9" stroke="#2a78d6" stroke-width="1.5" opacity="0.55"/>
+<circle cx="125.2" cy="154.9" r="4.5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>write-through, unlimited: 57% ± 18</title></circle>
+<line x1="249.8" x2="249.8" y1="257.2" y2="144.1" stroke="#2a78d6" stroke-width="1.5" opacity="0.55"/>
+<circle cx="249.8" cy="200.6" r="4.5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>write-through, 200 MB/s: 44% ± 16</title></circle>
+<line x1="374.2" x2="374.2" y1="304.0" y2="235.0" stroke="#2a78d6" stroke-width="1.5" opacity="0.55"/>
+<circle cx="374.2" cy="269.5" r="4.5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>write-through, 83 MB/s: 25% ± 10</title></circle>
+<line x1="498.8" x2="498.8" y1="322.8" y2="242.7" stroke="#2a78d6" stroke-width="1.5" opacity="0.55"/>
+<circle cx="498.8" cy="282.7" r="4.5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>write-through, 40 MB/s: 21% ± 11</title></circle>
+<text x="529.8" y="286.7" font-size="12" fill="#0b0b0b">write-through</text>
+<path d="M134.2,161.1 L258.8,160.8 L383.2,177.2 L507.8,192.5" fill="none" stroke="#eb6834" stroke-width="2"/>
+<line x1="134.2" x2="134.2" y1="214.0" y2="108.2" stroke="#eb6834" stroke-width="1.5" opacity="0.55"/>
+<circle cx="134.2" cy="161.1" r="4.5" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"><title>hybrid, unlimited: 56% ± 15</title></circle>
+<line x1="258.8" x2="258.8" y1="211.6" y2="110.0" stroke="#eb6834" stroke-width="1.5" opacity="0.55"/>
+<circle cx="258.8" cy="160.8" r="4.5" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"><title>hybrid, 200 MB/s: 56% ± 15</title></circle>
+<line x1="383.2" x2="383.2" y1="227.1" y2="127.3" stroke="#eb6834" stroke-width="1.5" opacity="0.55"/>
+<circle cx="383.2" cy="177.2" r="4.5" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"><title>hybrid, 83 MB/s: 51% ± 14</title></circle>
+<line x1="507.8" x2="507.8" y1="237.5" y2="147.4" stroke="#eb6834" stroke-width="1.5" opacity="0.55"/>
+<circle cx="507.8" cy="192.5" r="4.5" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"><title>hybrid, 40 MB/s: 47% ± 13</title></circle>
+<text x="529.8" y="196.5" font-size="12" fill="#0b0b0b">hybrid</text>
+<path d="M143.2,204.9 L267.8,204.9 L392.2,204.9 L516.8,204.9" fill="none" stroke="#1baf7a" stroke-width="2"/>
+<line x1="143.2" x2="143.2" y1="257.0" y2="152.9" stroke="#1baf7a" stroke-width="1.5" opacity="0.55"/>
+<circle cx="143.2" cy="204.9" r="4.5" fill="#1baf7a" stroke="#fcfcfb" stroke-width="2"><title>evacuate only, unlimited: 43% ± 15</title></circle>
+<line x1="267.8" x2="267.8" y1="257.0" y2="152.9" stroke="#1baf7a" stroke-width="1.5" opacity="0.55"/>
+<circle cx="267.8" cy="204.9" r="4.5" fill="#1baf7a" stroke="#fcfcfb" stroke-width="2"><title>evacuate only, 200 MB/s: 43% ± 15</title></circle>
+<line x1="392.2" x2="392.2" y1="257.0" y2="152.9" stroke="#1baf7a" stroke-width="1.5" opacity="0.55"/>
+<circle cx="392.2" cy="204.9" r="4.5" fill="#1baf7a" stroke="#fcfcfb" stroke-width="2"><title>evacuate only, 83 MB/s: 43% ± 15</title></circle>
+<line x1="516.8" x2="516.8" y1="257.0" y2="152.9" stroke="#1baf7a" stroke-width="1.5" opacity="0.55"/>
+<circle cx="516.8" cy="204.9" r="4.5" fill="#1baf7a" stroke="#fcfcfb" stroke-width="2"><title>evacuate only, 40 MB/s: 43% ± 15</title></circle>
+<text x="529.8" y="208.9" font-size="12" fill="#0b0b0b">evacuate only</text>
+</svg>

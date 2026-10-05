@@ -40,6 +40,8 @@ at zero steady-state cost?
   ships session KV through the KV connector / P2P tier. Output-parity test.
 - [ ] Phase 4: live FIS-triggered reclaims, then the write-up.
 
+![Write-through vs hybrid vs evacuation under a replication bandwidth budget](docs/figures/backpressure.svg)
+
 ## Quick start (CPU only)
 ```bash
 uv venv -p 3.12 .venv && uv pip install -p .venv/bin/python -e ".[dev]"
