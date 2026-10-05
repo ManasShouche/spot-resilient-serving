@@ -26,6 +26,7 @@ from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass, replace
 from pathlib import Path
 
+from kvevac.calibration import load_calibration
 from kvevac.profiles import GPUS, LINKS, MODELS
 from kvevac.reuse import ReuseModel
 from kvevac.sim import FleetConfig, Policy, correlated_reclaims, run
@@ -252,16 +253,33 @@ def main() -> None:
     parser.add_argument("experiment", choices=[*EXPERIMENTS, "all"])
     parser.add_argument("--seeds", type=int, default=6)
     parser.add_argument("--jobs", type=int, default=os.cpu_count() or 1)
+    parser.add_argument("--calibration", type=Path,
+                        help="measured profile JSON (kvevac.calibration); its GPU and links "
+                             "replace the assumed ones in every setting")
+    parser.add_argument("--link", help="override every setting's link by name")
     parser.add_argument("--out", type=Path)
     args = parser.parse_args()
     names = list(EXPERIMENTS) if args.experiment == "all" else [args.experiment]
+    overrides: dict[str, str] = {}
+    provenance = "assumed hardware constants"
+    if args.calibration:
+        cal = load_calibration(args.calibration)
+        GPUS[cal.gpu.name] = cal.gpu  # worker processes inherit this via fork
+        LINKS.update(cal.links)
+        overrides["gpu"] = cal.gpu.name
+        if len(cal.links) == 1:
+            overrides["link"] = next(iter(cal.links))
+        provenance = f"calibrated from {args.calibration.name}"
+    if args.link:
+        overrides["link"] = args.link
     for name in names:
         build, policies = EXPERIMENTS[name]
         started = time.time()
-        results = run_settings(build(), args.seeds, policies or tuple(Policy), args.jobs)
+        settings = [replace(s, **overrides) for s in build()]
+        results = run_settings(settings, args.seeds, policies or tuple(Policy), args.jobs)
         table = render(results)
         header = (f"## {name} ({args.seeds} seeds, synthetic AgentX-calibrated workload, "
-                  f"assumed hardware constants; {time.time() - started:.0f}s)\n\n")
+                  f"{provenance}; {time.time() - started:.0f}s)\n\n")
         print(header + table + "\n", flush=True)
         if args.out:
             args.out.mkdir(parents=True, exist_ok=True)
