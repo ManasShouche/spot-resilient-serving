@@ -59,6 +59,9 @@ GPUS = {
                        decode_tokens_per_s=60),
     "h100": GpuProfile("h100", prefill_tokens_per_s=25_000, attention_knee_tokens=32_000,
                        decode_tokens_per_s=100),
+    # ASSUMED: a 70B model, tensor-parallel over 4xH100 (one serving node).
+    "h100x4-70b": GpuProfile("h100x4-70b", prefill_tokens_per_s=9_000,
+                             attention_knee_tokens=48_000, decode_tokens_per_s=45),
 }
 
 LINKS = {
