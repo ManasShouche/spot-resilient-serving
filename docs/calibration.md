@@ -14,6 +14,16 @@ GPUs, and can run on on-demand instances.
 | `RECOMPUTE_SETUP_S` | Time to first scheduled token for a cold request at low load | same |
 | Notice timing | Real FIS `send-spot-instance-interruptions`: rebalance-recommendation lead time and gap from 2-minute notice to termination, measured via IMDS polling | any spot instance |
 
+## Tooling (ready)
+- `python -m kvevac.measure.prefill --base-url ... --model ... --gpu <name> --out f.json`
+  measures cold-prefill TTFT (unique nonce per prompt; context length from the
+  server's usage report) and decode rate. Tested against a fake streaming server,
+  but **not yet run against real vLLM**.
+- `kvevac.calibration` fits the cost-model constants from that JSON. Add measured
+  link points under `"links"`.
+- `python -m kvevac.experiments all --calibration f.json` reruns every experiment
+  with the measured profile, and its output header records the calibration file.
+
 Exit criterion: rerun `python -m kvevac.sweep` with the measured profile and check
 that the ordering in `docs/simulator.md` survives. If it does not, that is the
 finding.
