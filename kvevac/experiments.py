@@ -18,9 +18,11 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import os
 import statistics
 import time
 from collections.abc import Iterable
+from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass, replace
 from pathlib import Path
 
@@ -85,12 +87,25 @@ def paired(values_a: list[float], values_b: list[float]) -> tuple[float, float]:
     return statistics.mean(diffs), half
 
 
+def _job(args: tuple[Setting, int, tuple[Policy, ...]]) -> dict[str, dict]:
+    setting, seed, policies = args
+    return excess_by_policy(setting, seed, policies)
+
+
 def run_settings(settings: list[Setting], seeds: int,
-                 policies: Iterable[Policy] = tuple(Policy)) -> dict[str, list[dict]]:
+                 policies: Iterable[Policy] = tuple(Policy),
+                 jobs: int = 1) -> dict[str, list[dict]]:
+    """Run every (setting, seed) pair; `jobs > 1` fans out over processes."""
+    tasks = [(setting, seed, tuple(policies)) for setting in settings
+             for seed in range(seeds)]
+    if jobs > 1:
+        with ProcessPoolExecutor(max_workers=jobs) as pool:
+            outputs = list(pool.map(_job, tasks))
+    else:
+        outputs = [_job(task) for task in tasks]
     results: dict[str, list[dict]] = {}
-    for setting in settings:
-        results[setting.label] = [excess_by_policy(setting, seed, policies)
-                                  for seed in range(seeds)]
+    for (setting, _, _), output in zip(tasks, outputs, strict=True):
+        results.setdefault(setting.label, []).append(output)
     return results
 
 
@@ -171,17 +186,18 @@ def main() -> None:
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("experiment", choices=[*EXPERIMENTS, "all"])
     parser.add_argument("--seeds", type=int, default=6)
+    parser.add_argument("--jobs", type=int, default=os.cpu_count() or 1)
     parser.add_argument("--out", type=Path)
     args = parser.parse_args()
     names = list(EXPERIMENTS) if args.experiment == "all" else [args.experiment]
     for name in names:
         build, policies = EXPERIMENTS[name]
         started = time.time()
-        results = run_settings(build(), args.seeds, policies or tuple(Policy))
+        results = run_settings(build(), args.seeds, policies or tuple(Policy), args.jobs)
         table = render(results)
         header = (f"## {name} ({args.seeds} seeds, synthetic AgentX-calibrated workload, "
                   f"assumed hardware constants; {time.time() - started:.0f}s)\n\n")
-        print(header + table + "\n")
+        print(header + table + "\n", flush=True)
         if args.out:
             args.out.mkdir(parents=True, exist_ok=True)
             (args.out / f"{name}.md").write_text(header + table + "\n")
