@@ -1,0 +1,21 @@
+{
+  "description": "kvevac: spot interruption notice timing (2-minute notice)",
+  "targets": {
+    "kvevacSpot": {
+      "resourceType": "aws:ec2:spot-instance",
+      "resourceTags": {"project": "kvevac-fis"},
+      "filters": [{"path": "State.Name", "values": ["running"]}],
+      "selectionMode": "COUNT(1)"
+    }
+  },
+  "actions": {
+    "interrupt": {
+      "actionId": "aws:ec2:send-spot-instance-interruptions",
+      "parameters": {"durationBeforeInterruption": "PT2M"},
+      "targets": {"SpotInstances": "kvevacSpot"}
+    }
+  },
+  "stopConditions": [{"source": "none"}],
+  "roleArn": "REPLACE_WITH_FIS_ROLE_ARN",
+  "tags": {"project": "kvevac-fis"}
+}

@@ -38,6 +38,12 @@ log() { echo "[$(date -u +%H:%M:%S)] $*"; }
 : "${GH_TOKEN:?GH_TOKEN is not set}"
 export HF_TOKEN HUGGING_FACE_HUB_TOKEN="$HF_TOKEN"
 
+if ! command -v git >/dev/null || ! command -v curl >/dev/null; then
+  log "installing git/curl"
+  (apt-get update -qq && apt-get install -y -qq git curl) >/dev/null 2>&1 \
+    || log "could not install git/curl; continuing"
+fi
+
 GPU_NAME="$(nvidia-smi --query-gpu=name --format=csv,noheader | head -1)"
 GPU_LABEL="${GPU_LABEL:-$(echo "$GPU_NAME" | tr '[:upper:] ' '[:lower:]-' | sed 's/nvidia-//')}"
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
@@ -64,10 +70,14 @@ push_results() {
 }
 
 self_destroy() {
-  if [ -n "${VAST_API_KEY:-}" ] && [ -n "${CONTAINER_ID:-}" ]; then
+  # VAST_API_KEY: your key, if you chose to provide one. CONTAINER_API_KEY /
+  # CONTAINER_ID: instance-scoped values Vast may inject (unverified; always confirm in
+  # the console that the instance is gone).
+  local key="${VAST_API_KEY:-${CONTAINER_API_KEY:-}}"
+  if [ -n "$key" ] && [ -n "${CONTAINER_ID:-}" ]; then
     log "destroying instance $CONTAINER_ID"
     curl -s -X DELETE "https://console.vast.ai/api/v0/instances/${CONTAINER_ID}/" \
-      -H "Authorization: Bearer ${VAST_API_KEY}" >/dev/null || true
+      -H "Authorization: Bearer ${key}" >/dev/null || true
   else
     log "REMINDER: destroy this instance in the Vast console (storage bills until deleted)"
   fi
@@ -76,7 +86,9 @@ self_destroy() {
 finish() {
   status=$?
   log "job exiting with status $status"
-  [ -n "${WATCHER_PID:-}" ] && kill "$WATCHER_PID" 2>/dev/null
+  if [ -n "${WATCHER_PID:-}" ]; then
+    pkill -P "$WATCHER_PID" 2>/dev/null; kill "$WATCHER_PID" 2>/dev/null
+  fi
   [ -n "${VLLM_PID:-}" ] && kill "$VLLM_PID" 2>/dev/null
   push_results
   self_destroy
@@ -84,7 +96,9 @@ finish() {
 trap finish EXIT
 trap 'exit 143' TERM INT  # turn signals into a normal exit so the EXIT trap runs
 # Spend guard: kill the whole job after JOB_TIMEOUT_MIN minutes.
-( sleep $((JOB_TIMEOUT_MIN * 60)); log "TIMEOUT"; kill -TERM $$ ) &
+# Its output is detached so the sleeping watcher never holds the log pipe open.
+( sleep $((JOB_TIMEOUT_MIN * 60)); echo "TIMEOUT" >> "$WORK/job.log"; kill -TERM $$ ) \
+  >/dev/null 2>&1 &
 WATCHER_PID=$!
 
 if [ "${SKIP_INSTALL:-0}" != 1 ]; then
