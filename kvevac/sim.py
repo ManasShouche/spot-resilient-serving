@@ -72,6 +72,8 @@ class FleetConfig:
     session_reuse_prob: float = 0.9
     """Used by ReuseModel.FIXED."""
     reuse_model: ReuseModel = ReuseModel.FIXED
+    partial_prefix: bool = False
+    """Let the planner fill leftover notice time with partial session prefixes."""
     contention: bool = True
     replication_bytes_per_s: float | None = None
     """Per-node write-through budget. When the replication queue exceeds
@@ -381,7 +383,8 @@ class Simulation:
         ready = {d.id: max(0.0, self.nodes[d.id].ingress_free_at - now)
                  for d in destinations if d.id in self.nodes}
         plan = plan_evacuation(objects, destinations, notice_s=notice_s, model=self.model,
-                               gpu=self.gpu, source_group=node.group, dest_ready_s=ready)
+                               gpu=self.gpu, source_group=node.group, dest_ready_s=ready,
+                               partial_prefix=self.fleet.partial_prefix)
         for dest_id, free_after in plan.dest_ready_s.items():
             if dest_id in self.nodes:
                 self.nodes[dest_id].ingress_free_at = now + free_after
@@ -390,8 +393,7 @@ class Simulation:
                 continue
             session_id = step.object_id.removesuffix(":session")
             state = self.sessions[session_id]
-            tokens = next(o.tokens for o in objects if o.id == step.object_id) if \
-                not step.object_id.endswith(":session") else state.prefix_tokens
+            tokens = step.tokens
             self.metrics.notice_egress_bytes += kv_bytes(tokens, self.model)
             self.metrics.evacuated_sessions += 1
             if step.destination != "store":
@@ -481,7 +483,8 @@ class Simulation:
             state = self.sessions[session_id]
             state.lost_by_reclaim = True
             state.prefix_tokens = context
-            state.node = None
+            if state.node == node_id:
+                state.node = None  # else: its KV was evacuated; restart where it went
             self._push(now, "turn", (session_id, None))
         self._push(now + self.fleet.replacement_delay_s, "replace", (node.group,))
 

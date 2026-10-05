@@ -19,6 +19,7 @@ from kvevac.costmodel import recompute_s, transfer_s
 from kvevac.profiles import GpuProfile, LinkProfile, ModelProfile
 
 FINISH_MARGIN_S = 1.0  # ASSUMED: slack kept between local completion and termination
+MIN_PARTIAL_TOKENS = 4_096  # ASSUMED: below this a partial prefix is not worth a transfer
 
 
 class Action(StrEnum):
@@ -59,6 +60,8 @@ class Step:
     start_s: float = 0.0
     end_s: float = 0.0
     value_s: float = 0.0
+    tokens: int = 0
+    """Tokens shipped; less than the object's size for a partial-prefix transfer."""
 
 
 @dataclass
@@ -99,11 +102,16 @@ def plan_evacuation(
     source_group: str,
     doomed_groups: frozenset[str] = frozenset(),
     dest_ready_s: dict[str, float] | None = None,
+    partial_prefix: bool = False,
 ) -> Plan:
     """Greedy by value density on one serial egress pipe, respecting release times.
 
     `dest_ready_s` gives, per destination, how long its inbound link is already booked
     by other sources' evacuations; transfers to it cannot start earlier.
+
+    With `partial_prefix`, egress time left before the deadline is filled by shipping
+    the longest leading prefix of a dropped object that still fits. A KV prefix is
+    usable from the front, so a partial prefix saves recompute(k) for k shipped tokens.
     """
     plan = Plan(dest_ready_s=dict(dest_ready_s or {}))
     free = {d.id: d.free_tokens for d in destinations}
@@ -147,14 +155,48 @@ def plan_evacuation(
             if best is None or key > (best[0], -best[4]):
                 best = (value, start, dest, duration, start + duration)
         if best is None:
-            plan.steps.append(Step(obj.id, Action.DROP))
+            plan.steps.append(Step(obj.id, Action.DROP, tokens=obj.tokens))
             continue
         value, start, dest, _, end = best
         clock = end
         plan.dest_ready_s[dest.id] = end
         free[dest.id] -= obj.tokens
-        plan.steps.append(Step(obj.id, Action.TRANSFER, dest.id, start, end, value))
+        plan.steps.append(Step(obj.id, Action.TRANSFER, dest.id, start, end, value,
+                               obj.tokens))
+    if partial_prefix:
+        clock = _fill_partial_prefixes(plan, candidates, dests, free, clock, notice_s,
+                                       model, gpu)
     return plan
+
+
+def _fill_partial_prefixes(plan: Plan, candidates: list[tuple[KVObject, float]],
+                           dests: list[Destination], free: dict[str, int], clock: float,
+                           notice_s: float, model: ModelProfile, gpu: GpuProfile) -> float:
+    by_id = {obj.id: (obj, release) for obj, release in candidates}
+    for index, step in enumerate(plan.steps):
+        if step.action is not Action.DROP or step.object_id not in by_id:
+            continue
+        obj, release = by_id[step.object_id]
+        best = None
+        for dest in dests:
+            start = max(clock, release, plan.dest_ready_s.get(dest.id, 0.0))
+            window = notice_s - start - dest.link.setup_s
+            tokens = min(obj.tokens, free[dest.id],
+                         int(window * dest.link.bytes_per_s / model.kv_bytes_per_token))
+            if tokens < MIN_PARTIAL_TOKENS:
+                continue
+            value = save_value_s(KVObject(obj.id, tokens, obj.reuse_prob), dest, model, gpu)
+            if best is None or value > best[0]:
+                best = (value, dest, start, tokens)
+        if best is None or best[0] <= 0:
+            continue
+        value, dest, start, tokens = best
+        end = start + transfer_s(tokens, model, dest.link)
+        clock = end
+        plan.dest_ready_s[dest.id] = end
+        free[dest.id] -= tokens
+        plan.steps[index] = Step(obj.id, Action.TRANSFER, dest.id, start, end, value, tokens)
+    return clock
 
 
 def exact_value_single_destination(

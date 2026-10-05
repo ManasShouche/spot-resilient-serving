@@ -173,11 +173,20 @@ def exp_reuse() -> list[Setting]:
             for notice in (30, 120) for model in ReuseModel]
 
 
+def exp_partial() -> list[Setting]:
+    """Does shipping partial prefixes close the gap at equal budget ratio?"""
+    base = FleetConfig(replica_tokens=4_000_000)
+    return [Setting(f"{link}, W={notice:g}s, partial={flag}", notice_s=notice, link=link,
+                    fleet=replace(base, partial_prefix=flag))
+            for link in ("10gbe", "25gbe") for notice in (30, 120) for flag in (False, True)]
+
+
 EXPERIMENTS = {
     "main": (exp_main, None),
     "budget": (exp_budget, (Policy.RECOMPUTE, Policy.EVACUATE)),
     "sensitivity": (exp_sensitivity, None),
     "reuse": (exp_reuse, (Policy.RECOMPUTE, Policy.EVACUATE)),
+    "partial": (exp_partial, (Policy.RECOMPUTE, Policy.EVACUATE, Policy.HYBRID)),
 }
 
 

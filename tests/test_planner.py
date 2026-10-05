@@ -90,3 +90,13 @@ def test_plan_reports_booked_ingress_per_destination() -> None:
     result = plan([KVObject("s1", 100_000)], [peer()], notice=60.0)
     step = result.action_for("s1")
     assert result.dest_ready_s["p1"] == step.end_s > 0
+
+
+def test_partial_prefix_fills_leftover_notice_time() -> None:
+    objects = [KVObject("big", 240_000)]
+    whole = plan(objects, [peer()], notice=6.0)
+    partial = plan(objects, [peer()], notice=6.0, partial_prefix=True)
+    assert whole.action_for("big").action is Action.DROP
+    step = partial.action_for("big")
+    assert step.action is Action.TRANSFER and 0 < step.tokens < 240_000
+    assert step.end_s <= 6.0 and partial.value_s > 0

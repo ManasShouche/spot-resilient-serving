@@ -97,3 +97,10 @@ def test_tight_replication_budget_drops_updates_and_loses_more(workload) -> None
                 fleet=FleetConfig(replica_tokens=4_000_000, replication_bytes_per_s=2e6), **KW)
     assert roomy.replication_drops == 0 < tight.replication_drops
     assert tight.lost_tokens >= roomy.lost_tokens
+
+
+def test_killed_turn_restarts_where_its_kv_was_evacuated(workload) -> None:
+    events = reclaims(20.0)
+    evac = run(workload, events, Policy.EVACUATE, fleet=FLEET, **KW)
+    drain = run(workload, events, Policy.DRAIN_LOCAL, fleet=FLEET, **KW)
+    assert evac.lost_tokens <= drain.lost_tokens
