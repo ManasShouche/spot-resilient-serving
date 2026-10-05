@@ -1,4 +1,4 @@
-# Phase 1b results (simulated, 12 seeds)
+# Phase 1b results (simulated; 20 seeds for the main map, 12 elsewhere)
 
 **Status of these numbers:** discrete-event simulation. The workload is synthetic
 agent sessions fitted to the published AgentX marginals. Hardware constants are
@@ -35,19 +35,21 @@ against a no-reclaim run.
 4. **Evacuation's benefit is governed by ρ = W·B / resident KV** (§2).
 5. **Reuse prediction is the main lever left for evacuation** (§5).
 
-## 1. Main regime map (`results/phase1b/main.md`)
+## 1. Main regime map (`results/phase1b/main.md`, 20 seeds)
 
-Δ% vs `recompute`, independent / correlated (half a failure group per burst):
+Δ% vs `recompute` (± 95% CI as a share of the recompute mean), independent /
+correlated (half a failure group per burst):
 
-| notice W | drain_local | evacuate | replicate | hybrid |
-|---|---|---|---|---|
-| 0 s | 0 / 0 | 0 / 0 | −51% / −58% | −51% / −58% |
-| 30 s | −7% / −4% | −23% / −14% | −59% / −56% | −58% / −61% |
-| 120 s | 0% / −1% | −43% / −41% | −57% / −59% | −56% / −60% |
+| notice W | evacuate | replicate (write-through) | hybrid |
+|---|---|---|---|
+| 0 s | 0 / 0 | −53% ±13 / −57% ±10 | −53% ±13 / −57% ±10 |
+| 30 s | −20% ±10 / −16% ±4 | −55% ±16 / −59% ±9 | −58% ±16 / −59% ±9 |
+| 120 s | −42% ±12 / −43% ±10 | −59% ±13 / −61% ±10 | −56% ±12 / −61% ±10 |
 
-Killed in-flight turns, independent W=120 s: recompute 24.3, replicate 25.5,
-evacuate 1.5, hybrid 1.3. Draining alone saves in-flight turns but not caches, and
-it is never significantly better than doing nothing.
+Killed in-flight turns at W=120 s (independent): recompute 22.2, write-through
+23.6, evacuate 1.4, hybrid 1.2. Draining alone (not shown; see the table file) is
+never significantly better than doing nothing. Other experiments in this doc use 12
+seeds.
 
 ## 2. The governing ratio (`results/phase1b/budget.md`)
 

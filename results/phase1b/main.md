@@ -1,34 +1,34 @@
-## main (12 seeds, synthetic AgentX-calibrated workload, assumed hardware constants; 150s)
+## main (20 seeds, synthetic AgentX-calibrated workload, assumed hardware constants; 237s)
 
 | setting | policy | excess prefill GPU-s (mean) | vs recompute: Δ ± 95% CI | Δ% | ΔTTFT mean (s) | killed turns | notice GB | replication GB | budget ratio |
 |---|---|---|---|---|---|---|---|---|---|
-| independent, W=0s | recompute | 2212 | — | — | +0.23 | 23.9 | 0 | 0 | 0.00 |
-| independent, W=0s | drain_local | 2212 | +0 ± 0 | +0% | +0.23 | 23.9 | 0 | 0 | 0.00 |
-| independent, W=0s | evacuate | 2212 | +0 ± 0 | +0% | +0.23 | 23.9 | 0 | 0 | 0.00 |
-| independent, W=0s | replicate | 1082 | -1129 ± 349 | -51% | +0.14 | 24.8 | 0 | 48139 | 0.00 |
-| independent, W=0s | hybrid | 1082 | -1129 ± 349 | -51% | +0.14 | 24.8 | 0 | 48139 | 0.00 |
-| independent, W=30s | recompute | 2438 | — | — | +0.25 | 25.9 | 0 | 0 | 0.32 |
-| independent, W=30s | drain_local | 2259 | -179 ± 226 | -7% | +0.25 | 6.0 | 0 | 0 | 0.32 |
-| independent, W=30s | evacuate | 1873 | -566 ± 248 | -23% | +0.19 | 4.8 | 335 | 0 | 0.32 |
-| independent, W=30s | replicate | 1003 | -1435 ± 463 | -59% | +0.13 | 27.4 | 0 | 49713 | 0.32 |
-| independent, W=30s | hybrid | 1021 | -1417 ± 502 | -58% | +0.13 | 5.2 | 307 | 46972 | 0.32 |
-| independent, W=120s | recompute | 2307 | — | — | +0.24 | 24.3 | 0 | 0 | 1.26 |
-| independent, W=120s | drain_local | 2315 | +8 ± 227 | +0% | +0.25 | 1.2 | 0 | 0 | 1.26 |
-| independent, W=120s | evacuate | 1311 | -996 ± 343 | -43% | +0.16 | 1.5 | 1091 | 0 | 1.25 |
-| independent, W=120s | replicate | 981 | -1325 ± 422 | -57% | +0.12 | 25.5 | 0 | 47550 | 1.27 |
-| independent, W=120s | hybrid | 1022 | -1285 ± 349 | -56% | +0.17 | 1.3 | 798 | 49962 | 1.25 |
-| correlated, W=0s | recompute | 2155 | — | — | +0.18 | 19.5 | 0 | 0 | 0.00 |
-| correlated, W=0s | drain_local | 2155 | +0 ± 0 | +0% | +0.18 | 19.5 | 0 | 0 | 0.00 |
-| correlated, W=0s | evacuate | 2155 | +0 ± 0 | +0% | +0.18 | 19.5 | 0 | 0 | 0.00 |
-| correlated, W=0s | replicate | 915 | -1240 ± 303 | -58% | +0.10 | 20.4 | 0 | 41234 | 0.00 |
-| correlated, W=0s | hybrid | 915 | -1240 ± 303 | -58% | +0.10 | 20.4 | 0 | 41234 | 0.00 |
-| correlated, W=30s | recompute | 2294 | — | — | +0.20 | 20.7 | 0 | 0 | 0.17 |
-| correlated, W=30s | drain_local | 2209 | -85 ± 180 | -4% | +0.20 | 5.8 | 0 | 0 | 0.17 |
-| correlated, W=30s | evacuate | 1976 | -318 ± 128 | -14% | +0.17 | 5.5 | 315 | 0 | 0.17 |
-| correlated, W=30s | replicate | 1018 | -1276 ± 256 | -56% | +0.13 | 20.4 | 0 | 43011 | 0.17 |
-| correlated, W=30s | hybrid | 890 | -1403 ± 312 | -61% | +0.13 | 5.2 | 284 | 40953 | 0.17 |
-| correlated, W=120s | recompute | 2332 | — | — | +0.20 | 20.4 | 0 | 0 | 0.69 |
-| correlated, W=120s | drain_local | 2307 | -25 ± 140 | -1% | +0.21 | 1.0 | 0 | 0 | 0.69 |
-| correlated, W=120s | evacuate | 1365 | -967 ± 314 | -41% | +0.14 | 1.1 | 1044 | 0 | 0.69 |
-| correlated, W=120s | replicate | 953 | -1378 ± 353 | -59% | +0.11 | 20.5 | 0 | 42851 | 0.69 |
-| correlated, W=120s | hybrid | 942 | -1390 ± 380 | -60% | +0.14 | 1.0 | 723 | 40051 | 0.69 |
+| independent, W=0s | recompute | 2053 | — | — | +0.18 | 21.9 | 0 | 0 | 0.00 |
+| independent, W=0s | drain_local | 2053 | +0 ± 0 | +0% | +0.18 | 21.9 | 0 | 0 | 0.00 |
+| independent, W=0s | evacuate | 2053 | +0 ± 0 | +0% | +0.18 | 21.9 | 0 | 0 | 0.00 |
+| independent, W=0s | replicate | 968 | -1085 ± 272 | -53% | +0.11 | 22.6 | 0 | 47040 | 0.00 |
+| independent, W=0s | hybrid | 968 | -1085 ± 272 | -53% | +0.11 | 22.6 | 0 | 47040 | 0.00 |
+| independent, W=30s | recompute | 2157 | — | — | +0.20 | 23.1 | 0 | 0 | 0.50 |
+| independent, W=30s | drain_local | 2051 | -106 ± 173 | -5% | +0.19 | 5.3 | 0 | 0 | 0.50 |
+| independent, W=30s | evacuate | 1733 | -424 ± 205 | -20% | +0.16 | 5.0 | 329 | 0 | 0.50 |
+| independent, W=30s | replicate | 965 | -1192 ± 349 | -55% | +0.12 | 24.8 | 0 | 47438 | 0.50 |
+| independent, W=30s | hybrid | 915 | -1243 ± 349 | -58% | +0.11 | 5.5 | 297 | 47144 | 0.50 |
+| independent, W=120s | recompute | 2124 | — | — | +0.20 | 22.2 | 0 | 0 | 2.00 |
+| independent, W=120s | drain_local | 2113 | -11 ± 181 | -1% | +0.20 | 1.0 | 0 | 0 | 2.00 |
+| independent, W=120s | evacuate | 1226 | -899 ± 251 | -42% | +0.13 | 1.4 | 1098 | 0 | 2.00 |
+| independent, W=120s | replicate | 878 | -1247 ± 267 | -59% | +0.10 | 23.6 | 0 | 45887 | 2.01 |
+| independent, W=120s | hybrid | 944 | -1180 ± 246 | -56% | +0.14 | 1.2 | 784 | 48076 | 2.00 |
+| correlated, W=0s | recompute | 2197 | — | — | +0.18 | 20.9 | 0 | 0 | 0.00 |
+| correlated, W=0s | drain_local | 2197 | +0 ± 0 | +0% | +0.18 | 20.9 | 0 | 0 | 0.00 |
+| correlated, W=0s | evacuate | 2197 | +0 ± 0 | +0% | +0.18 | 20.9 | 0 | 0 | 0.00 |
+| correlated, W=0s | replicate | 941 | -1256 ± 215 | -57% | +0.10 | 21.7 | 0 | 40701 | 0.00 |
+| correlated, W=0s | hybrid | 941 | -1256 ± 215 | -57% | +0.10 | 21.7 | 0 | 40701 | 0.00 |
+| correlated, W=30s | recompute | 2306 | — | — | +0.19 | 21.4 | 0 | 0 | 0.18 |
+| correlated, W=30s | drain_local | 2275 | -31 ± 122 | -1% | +0.20 | 5.8 | 0 | 0 | 0.18 |
+| correlated, W=30s | evacuate | 1934 | -372 ± 103 | -16% | +0.16 | 6.0 | 344 | 0 | 0.18 |
+| correlated, W=30s | replicate | 953 | -1352 ± 199 | -59% | +0.12 | 21.4 | 0 | 40902 | 0.18 |
+| correlated, W=30s | hybrid | 944 | -1362 ± 208 | -59% | +0.13 | 5.7 | 314 | 40855 | 0.18 |
+| correlated, W=120s | recompute | 2368 | — | — | +0.20 | 21.6 | 0 | 0 | 0.71 |
+| correlated, W=120s | drain_local | 2319 | -49 ± 110 | -2% | +0.20 | 1.1 | 0 | 0 | 0.71 |
+| correlated, W=120s | evacuate | 1352 | -1016 ± 244 | -43% | +0.14 | 1.0 | 1130 | 0 | 0.71 |
+| correlated, W=120s | replicate | 935 | -1433 ± 244 | -61% | +0.11 | 21.8 | 0 | 40263 | 0.71 |
+| correlated, W=120s | hybrid | 918 | -1450 ± 247 | -61% | +0.13 | 0.9 | 825 | 39607 | 0.71 |
