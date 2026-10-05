@@ -117,3 +117,11 @@ def test_remote_replicas_delay_failover_turns() -> None:
                                    replica_restore_link=LINKS["object-store"]), **KW)
     assert remote.affected_turns > local.affected_turns
     assert sum(remote.added_latency_s) > sum(local.added_latency_s)
+
+
+def test_ingress_slowdown_charges_receivers_of_evacuated_kv(workload) -> None:
+    events = reclaims(120.0)
+    free = run(workload, events, Policy.EVACUATE, fleet=FLEET, **KW)
+    slowed = run(workload, events, Policy.EVACUATE,
+                 fleet=FleetConfig(ingress_slowdown=1.0), **KW)
+    assert slowed.prefill_gpu_s > free.prefill_gpu_s

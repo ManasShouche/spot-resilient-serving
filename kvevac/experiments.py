@@ -224,6 +224,13 @@ def exp_remote_replica() -> list[Setting]:
     return settings
 
 
+def exp_interference() -> list[Setting]:
+    """How much would receiver-side slowdown from evacuation traffic erode the benefit?"""
+    return [Setting(f"ingress slowdown {int(100 * f)}%, W=120s",
+                    fleet=FleetConfig(replica_tokens=4_000_000, ingress_slowdown=f))
+            for f in (0.0, 0.25, 0.5, 1.0)]
+
+
 EXPERIMENTS = {
     "main": (exp_main, None),
     "budget": (exp_budget, (Policy.RECOMPUTE, Policy.EVACUATE)),
@@ -233,6 +240,7 @@ EXPERIMENTS = {
     "equal_memory": (exp_equal_memory, None),
     "remote_replica": (exp_remote_replica,
                        (Policy.RECOMPUTE, Policy.EVACUATE, Policy.REPLICATE, Policy.HYBRID)),
+    "interference": (exp_interference, (Policy.RECOMPUTE, Policy.EVACUATE, Policy.HYBRID)),
     "backpressure": (exp_backpressure,
                      (Policy.RECOMPUTE, Policy.EVACUATE, Policy.REPLICATE, Policy.HYBRID)),
 }

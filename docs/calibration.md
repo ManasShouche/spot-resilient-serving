@@ -10,6 +10,7 @@ GPUs, and can run on on-demand instances.
 | `decode_tokens_per_s` | ITL at batch sizes 1–32 | same |
 | `LinkProfile.bytes_per_s`, `setup_s` | Time to move N GB of KV between two instances via LMCache (TCP) and via the NIXL P2P tier, idle and under serving load | 2 × g6e in one AZ; repeat across AZs |
 | Object-store link | LMCache remote backend to S3 (or a store in another AZ): write and read throughput | same |
+| `FleetConfig.ingress_slowdown` | Prefill TTFT on node B with and without a concurrent multi-GB KV ingest into B's CPU tier (LMCache / NIXL) | 2 × g6e |
 | `RECOMPUTE_SETUP_S` | Time to first scheduled token for a cold request at low load | same |
 | Notice timing | Real FIS `send-spot-instance-interruptions`: rebalance-recommendation lead time and gap from 2-minute notice to termination, measured via IMDS polling | any spot instance |
 

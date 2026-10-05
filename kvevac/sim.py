@@ -73,6 +73,9 @@ class FleetConfig:
     """Used by ReuseModel.FIXED."""
     reuse_model: ReuseModel = ReuseModel.FIXED
     partial_prefix: bool = False
+    ingress_slowdown: float = 0.0
+    """Fractional prefill slowdown on a node while it receives evacuated KV (PCIe/NIC
+    and host-memory contention). 0 means evacuation traffic is free for the receiver."""
     replica_restore_link: LinkProfile | None = None
     """If set, replicas live on remote capacity (e.g. vLLM's object-store tier) and a
     failover must first fetch the replica over this link. None: a peer's local tier,
@@ -292,6 +295,10 @@ class Simulation:
         self.metrics.prefill_gpu_s += prefill
         self.metrics.input_tokens += turn.input_tokens
         self.metrics.prefilled_tokens += turn.input_tokens - resident
+        if self.fleet.ingress_slowdown and start < node.ingress_free_at:
+            extra = prefill * self.fleet.ingress_slowdown
+            prefill += extra
+            self.metrics.prefill_gpu_s += extra  # the GPU is busy longer: count it
         if self.fleet.contention:
             start = max(start, node.prefill_free_at)
             node.prefill_free_at = start + prefill

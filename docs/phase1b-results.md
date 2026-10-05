@@ -118,6 +118,20 @@ Restore latency barely matters: agent sessions usually idle long enough for the
 fetch to finish before the next turn. **Write bandwidth is what binds.** With a
 realistic shared budget, hybrid beats write-through by about 16–18 points.
 
+### 4c. Receiver-side interference (`results/phase1b/interference.md`)
+
+The destination's prefill slows by a factor while evacuated KV is arriving (PCIe,
+NIC, and host-memory contention). The extra GPU time counts as excess. W = 120 s.
+
+| receiver slowdown while ingesting | 0% | 25% | 50% | 100% |
+|---|---|---|---|---|
+| evacuate | −43% | −39% | −25% | −22% |
+| hybrid | −56% | −52% | −49% | −48% |
+
+Evacuation alone is sensitive to this, and hybrid is robust because it moves less at
+notice. **Phase 2 must measure receiver slowdown under real KV ingestion.** It is now
+the assumption that most affects evacuation on its own.
+
 ## 5. Reuse prediction (`results/phase1b/reuse.md`)
 
 | W | fixed P=0.9 | recency (idle time) | oracle |
@@ -165,5 +179,6 @@ and write-through more so. With the fix and 12 seeds:
 - The workload is synthetic. The real AgentX replay is blocked on data access.
 - Replica updates land instantly, which flatters write-through. Restore latency from
   an object-store replica is modelled in §4b; from a peer's DRAM tier it is zero.
-- Evacuation traffic does not slow serving. This flatters evacuation.
+- Evacuation traffic slows receivers only if `ingress_slowdown` > 0 (default 0,
+  which flatters evacuation). §4c bounds the effect.
 - Decode is not modelled as contending; prefill is serialized per node.
