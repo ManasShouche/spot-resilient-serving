@@ -64,6 +64,8 @@ class Step:
 @dataclass
 class Plan:
     steps: list[Step] = field(default_factory=list)
+    dest_ready_s: dict[str, float] = field(default_factory=dict)
+    """Per destination: seconds from notice until its inbound link is free again."""
 
     @property
     def value_s(self) -> float:
@@ -96,9 +98,14 @@ def plan_evacuation(
     gpu: GpuProfile,
     source_group: str,
     doomed_groups: frozenset[str] = frozenset(),
+    dest_ready_s: dict[str, float] | None = None,
 ) -> Plan:
-    """Greedy by value density on one serial egress pipe, respecting release times."""
-    plan = Plan()
+    """Greedy by value density on one serial egress pipe, respecting release times.
+
+    `dest_ready_s` gives, per destination, how long its inbound link is already booked
+    by other sources' evacuations; transfers to it cannot start earlier.
+    """
+    plan = Plan(dest_ready_s=dict(dest_ready_s or {}))
     free = {d.id: d.free_tokens for d in destinations}
     dests = _eligible(destinations, source_group, doomed_groups)
 
@@ -115,41 +122,38 @@ def plan_evacuation(
         else:
             candidates.append((obj, 0.0))
 
-    scored = []
-    for obj, release in candidates:
-        best = None
+    # Order objects by their best achievable value density, then place each on the
+    # destination that maximizes value among those that can still finish before the
+    # deadline (ties broken by earliest finish). The source's egress is one serial pipe;
+    # each destination's ingress is shared with other sources via dest_ready_s.
+    def density(item: tuple[KVObject, float]) -> float:
+        obj = item[0]
+        rates = [save_value_s(obj, d, model, gpu) / transfer_s(obj.tokens, model, d.link)
+                 for d in dests]
+        return max(rates, default=0.0)
+
+    clock = 0.0
+    for obj, release in sorted(candidates, key=density, reverse=True):
+        best: tuple[float, float, Destination, float, float] | None = None
         for dest in dests:
             if free[dest.id] < obj.tokens:
                 continue
             value = save_value_s(obj, dest, model, gpu)
             duration = transfer_s(obj.tokens, model, dest.link)
-            if value > 0 and (best is None or value / duration > best[0]):
-                best = (value / duration, dest, value, duration)
-        scored.append((obj, release, best))
-
-    scored.sort(key=lambda item: -(item[2][0] if item[2] else 0.0))
-    clock = 0.0
-    for obj, release, best in scored:
+            start = max(clock, release, plan.dest_ready_s.get(dest.id, 0.0))
+            if value <= 0 or start + duration > notice_s:
+                continue
+            key = (value, -(start + duration))
+            if best is None or key > (best[0], -best[4]):
+                best = (value, start, dest, duration, start + duration)
         if best is None:
             plan.steps.append(Step(obj.id, Action.DROP))
             continue
-        _, dest, value, duration = best
-        if free[dest.id] < obj.tokens:
-            # Capacity was consumed by an earlier pick; retry the next-best destination.
-            alternatives = [d for d in dests if free[d.id] >= obj.tokens]
-            if not alternatives:
-                plan.steps.append(Step(obj.id, Action.DROP))
-                continue
-            dest = max(alternatives, key=lambda d: save_value_s(obj, d, model, gpu))
-            value = save_value_s(obj, dest, model, gpu)
-            duration = transfer_s(obj.tokens, model, dest.link)
-        start = max(clock, release)
-        if start + duration > notice_s or value <= 0:
-            plan.steps.append(Step(obj.id, Action.DROP))
-            continue
-        clock = start + duration
+        value, start, dest, _, end = best
+        clock = end
+        plan.dest_ready_s[dest.id] = end
         free[dest.id] -= obj.tokens
-        plan.steps.append(Step(obj.id, Action.TRANSFER, dest.id, start, clock, value))
+        plan.steps.append(Step(obj.id, Action.TRANSFER, dest.id, start, end, value))
     return plan
 
 

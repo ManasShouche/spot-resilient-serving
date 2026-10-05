@@ -57,3 +57,33 @@ def test_simulation_is_deterministic(workload) -> None:
     events = reclaims(30.0)
     first = run(workload, events, Policy.EVACUATE, fleet=FLEET, **KW).summary()
     assert first == run(workload, events, Policy.EVACUATE, fleet=FLEET, **KW).summary()
+
+
+def test_hybrid_never_does_worse_than_replicate_on_killed_turns(workload) -> None:
+    fleet = FleetConfig(replica_tokens=2_000_000)
+    events = reclaims(120.0)
+    replicate = run(workload, events, Policy.REPLICATE, fleet=fleet, **KW)
+    hybrid = run(workload, events, Policy.HYBRID, fleet=fleet, **KW)
+    assert hybrid.killed_turns <= replicate.killed_turns
+    assert hybrid.notice_egress_bytes > 0
+
+
+def test_contention_delays_turns_queued_behind_a_cold_rebuild(workload) -> None:
+    events = reclaims(0.0)
+    free = run(workload, events, Policy.RECOMPUTE, fleet=FleetConfig(contention=False), **KW)
+    busy = run(workload, events, Policy.RECOMPUTE, fleet=FleetConfig(contention=True), **KW)
+    assert busy.prefill_gpu_s == pytest.approx(free.prefill_gpu_s, rel=0.05)
+    assert sum(busy.ttft_s) > sum(free.ttft_s)
+
+
+def test_draining_sessions_fail_over_to_their_live_replica(workload) -> None:
+    fleet = FleetConfig(replica_tokens=4_000_000)
+    events = reclaims(120.0)
+    drain = run(workload, events, Policy.DRAIN_LOCAL, fleet=fleet, **KW)
+    hybrid = run(workload, events, Policy.HYBRID, fleet=fleet, **KW)
+    assert hybrid.lost_tokens < drain.lost_tokens
+
+
+def test_budget_ratio_is_recorded_per_reclaimed_node(workload) -> None:
+    metrics = run(workload, reclaims(60.0), Policy.RECOMPUTE, fleet=FLEET, **KW)
+    assert metrics.budget_ratios and all(r > 0 for r in metrics.budget_ratios)

@@ -17,6 +17,12 @@ Policies differ only in what they do between notice and termination (and, for
 - evacuate:    drain_local + deadline-bounded KV evacuation (kvevac.planner).
 - replicate:   continuous replication of each session cache to a peer in another
                failure group (pays steady-state egress); no action at notice.
+- hybrid:      replicate, and at notice drain + evacuate only objects whose replica
+               is missing or stale (in-flight turns, sessions not yet replicated).
+
+Contention (FleetConfig.contention, default on): prefill is serialized per node, so a
+cold rebuild delays every turn queued behind it; decode is treated as batched and
+parallel. Time-to-first-token (TTFT) is recorded for every turn.
 """
 
 from __future__ import annotations
@@ -39,6 +45,8 @@ class Policy(StrEnum):
     DRAIN_LOCAL = "drain_local"
     EVACUATE = "evacuate"
     REPLICATE = "replicate"
+    HYBRID = "hybrid"
+    """Continuous replication plus, at notice, evacuation of whatever replicas miss."""
 
 
 @dataclass(frozen=True)
@@ -52,13 +60,14 @@ class Reclaim:
 class FleetConfig:
     groups: tuple[str, ...] = ("az-a", "az-b", "az-c")
     nodes_per_group: int = 4
-    cache_tokens: int = 2_000_000
+    cache_tokens: int = 4_000_000
     """Per-node session-cache capacity (GPU KV + host DRAM tier), in tokens."""
     replica_tokens: int = 0
     """Per-node capacity of a separate replica tier (e.g. host DRAM/SSD). 0 means
     replicas share the primary cache and compete with live sessions for space."""
     replacement_delay_s: float = 300.0
     session_reuse_prob: float = 0.9
+    contention: bool = True
 
 
 @dataclass
@@ -73,6 +82,9 @@ class NodeState:
     """Replica tier (only used when FleetConfig.replica_tokens > 0)."""
     in_flight: dict[str, tuple[float, int, int]] = field(default_factory=dict)
     """session id -> (finish time, context tokens, output tokens)."""
+    prefill_free_at: float = 0.0
+    ingress_free_at: float = 0.0
+    """When this node's inbound link is next free (shared by concurrent evacuations)."""
 
     def used(self) -> int:
         return sum(self.cache.values())
@@ -91,6 +103,11 @@ class Metrics:
     notice_egress_bytes: int = 0
     replication_egress_bytes: int = 0
     evacuated_sessions: int = 0
+    ttft_s: list[float] = field(default_factory=list)
+    input_tokens: int = 0
+    prefilled_tokens: int = 0
+    budget_ratios: list[float] = field(default_factory=list)
+    """Per reclaimed node: notice x link bandwidth / KV bytes resident at notice."""
 
     def summary(self) -> dict[str, float]:
         latency = self.added_latency_s or [0.0]
@@ -106,6 +123,12 @@ class Metrics:
             "notice_egress_GB": round(self.notice_egress_bytes / 1e9, 1),
             "replication_egress_GB": round(self.replication_egress_bytes / 1e9, 1),
             "evacuated_sessions": self.evacuated_sessions,
+            "budget_ratio_mean": round(sum(self.budget_ratios) / max(1, len(self.budget_ratios)),
+                                       2),
+            "cache_hit_rate": round(1 - self.prefilled_tokens / max(1, self.input_tokens), 3),
+            "ttft_mean_s": round(sum(self.ttft_s) / max(1, len(self.ttft_s)), 2),
+            "ttft_p50_s": round(quantile(self.ttft_s or [0.0], 0.5), 2),
+            "ttft_p99_s": round(quantile(self.ttft_s or [0.0], 0.99), 2),
         }
 
 
@@ -210,9 +233,13 @@ class Simulation:
         turn = state.session.turns[state.next_turn]
         node = self.nodes.get(state.node) if state.node else None
         if node is None or not node.alive or node.draining:
-            if node is not None and session_id in node.cache:
-                state.lost_by_reclaim = True  # its cache is on a node about to vanish
-            node = self._pick_node()
+            replica = self._take_replica(session_id)
+            if replica is not None:
+                node = replica
+            else:
+                if node is not None and session_id in node.cache:
+                    state.lost_by_reclaim = True  # its cache is on a node about to vanish
+                node = self._pick_node()
             state.node = node.id
         start = now
         resident = min(node.cache.get(session_id, 0), turn.input_tokens)
@@ -230,6 +257,12 @@ class Simulation:
         state.lost_by_reclaim = False
         self.metrics.turns += 1
         self.metrics.prefill_gpu_s += prefill
+        self.metrics.input_tokens += turn.input_tokens
+        self.metrics.prefilled_tokens += turn.input_tokens - resident
+        if self.fleet.contention:
+            start = max(start, node.prefill_free_at)
+            node.prefill_free_at = start + prefill
+        self.metrics.ttft_s.append(start + prefill - requested)
         finish = start + prefill + turn.output_tokens / self.gpu.decode_tokens_per_s
         node.in_flight[session_id] = (finish, turn.input_tokens, turn.output_tokens)
         node.cache.move_to_end(session_id) if session_id in node.cache else None
@@ -244,7 +277,7 @@ class Simulation:
         state.prefix_tokens = context + output
         if node.alive:
             self._insert(node, session_id, context + output)
-            if self.policy is Policy.REPLICATE:
+            if self.policy in (Policy.REPLICATE, Policy.HYBRID):
                 self._replicate(node, state, context + output)
         state.next_turn += 1
         if state.next_turn < len(state.session.turns):
@@ -279,17 +312,22 @@ class Simulation:
         doomed_ids = {n.id for n in doomed}
         for node in doomed:
             self._push(now + reclaim.notice_s, "terminate", (node.id,))
+            resident = kv_bytes(node.used(), self.model)
+            if resident:
+                self.metrics.budget_ratios.append(
+                    reclaim.notice_s * self.link.bytes_per_s / resident)
             if self.policy in (Policy.RECOMPUTE, Policy.REPLICATE):
                 continue
             node.draining = True
-            if self.policy is Policy.EVACUATE:
+            if self.policy in (Policy.EVACUATE, Policy.HYBRID):
                 self._evacuate(now, node, reclaim.notice_s, doomed_ids)
 
     def _evacuate(self, now: float, node: NodeState, notice_s: float,
                   doomed_ids: set[str]) -> None:
         objects = []
         for session_id, tokens in node.cache.items():
-            if session_id in node.in_flight:
+            if session_id in node.in_flight or self._replica_is_current(session_id, tokens,
+                                                                         doomed_ids):
                 continue
             objects.append(KVObject(session_id, tokens,
                                     reuse_prob=self.fleet.session_reuse_prob))
@@ -306,8 +344,13 @@ class Simulation:
         if self.store is not None:
             destinations.append(Destination("store", "store", 10**12, self.store,
                                             remote_store=True))
+        ready = {d.id: max(0.0, self.nodes[d.id].ingress_free_at - now)
+                 for d in destinations if d.id in self.nodes}
         plan = plan_evacuation(objects, destinations, notice_s=notice_s, model=self.model,
-                               gpu=self.gpu, source_group=node.group)
+                               gpu=self.gpu, source_group=node.group, dest_ready_s=ready)
+        for dest_id, free_after in plan.dest_ready_s.items():
+            if dest_id in self.nodes:
+                self.nodes[dest_id].ingress_free_at = now + free_after
         for step in plan.steps:
             if step.action is not Action.TRANSFER:
                 continue
@@ -321,6 +364,33 @@ class Simulation:
                 state.node = step.destination
                 state.available_at = now + step.end_s
             self._push(now + step.end_s, "arrive", (session_id, step.destination, tokens))
+
+    def _take_replica(self, session_id: str) -> NodeState | None:
+        """Fail a session over to its live replica, promoting the replica to primary."""
+        if self.policy not in (Policy.REPLICATE, Policy.HYBRID):
+            return None
+        state = self.sessions[session_id]
+        replica = self.nodes.get(state.replica) if state.replica else None
+        if replica is None or not replica.alive or replica.draining:
+            return None
+        held = (replica.replicas.pop(session_id, 0) if self.fleet.replica_tokens
+                else replica.cache.get(session_id, 0))
+        if not held:
+            return None
+        self._insert(replica, session_id, held)
+        state.replica = None
+        state.lost_by_reclaim = False
+        return replica
+
+    def _replica_is_current(self, session_id: str, tokens: int, doomed_ids: set[str]) -> bool:
+        if self.policy is not Policy.HYBRID:
+            return False
+        replica_id = self.sessions[session_id].replica
+        replica = self.nodes.get(replica_id) if replica_id else None
+        if replica is None or not replica.alive or replica.id in doomed_ids:
+            return False
+        held = replica.replicas if self.fleet.replica_tokens else replica.cache
+        return held.get(session_id, 0) >= tokens
 
     def _on_arrive(self, now: float, session_id: str, dest_id: str, tokens: int) -> None:
         state = self.sessions[session_id]
@@ -347,7 +417,7 @@ class Simulation:
             if state.node == node_id:
                 state.lost_by_reclaim = True
                 state.node = None
-                if self.policy is Policy.REPLICATE and state.replica:
+                if self.policy in (Policy.REPLICATE, Policy.HYBRID) and state.replica:
                     replica = self.nodes[state.replica]
                     held = replica.replicas.get(session_id) if self.fleet.replica_tokens \
                         else replica.cache.get(session_id)

@@ -77,3 +77,16 @@ def test_greedy_is_near_optimal_on_small_instances() -> None:
         if optimum > 0:
             worst = min(worst, greedy / optimum)
     assert worst >= 0.6
+
+
+def test_busy_destination_ingress_is_avoided() -> None:
+    objects = [KVObject("s1", 100_000)]
+    dests = [peer("busy", "az-b"), peer("idle", "az-c")]
+    result = plan(objects, dests, notice=30.0, dest_ready_s={"busy": 29.0})
+    assert result.action_for("s1").destination == "idle"
+
+
+def test_plan_reports_booked_ingress_per_destination() -> None:
+    result = plan([KVObject("s1", 100_000)], [peer()], notice=60.0)
+    step = result.action_for("s1")
+    assert result.dest_ready_s["p1"] == step.end_s > 0

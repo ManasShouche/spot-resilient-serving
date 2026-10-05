@@ -37,13 +37,13 @@ def reclaims_for(pattern: str, fleet: FleetConfig, notice_s: float, seed: int):
 
 
 def sweep(*, sessions: int, seeds: int, gpu: str, model: str, links: list[str],
-          notices: list[float], patterns: list[str], replica_tokens: int = 0,
-          cache_tokens: int = 2_000_000) -> list[dict]:
+          notices: list[float], patterns: list[str], replica_tokens: int = 4_000_000,
+          cache_tokens: int = 4_000_000, arrival_window_s: float = 7200.0) -> list[dict]:
     fleet = FleetConfig(cache_tokens=cache_tokens, replica_tokens=replica_tokens)
     kwargs = dict(fleet=fleet, model=MODELS[model], gpu=GPUS[gpu])
     rows = []
     for seed in range(seeds):
-        workload = synthetic_sessions(sessions, arrival_window_s=3600, seed=seed)
+        workload = synthetic_sessions(sessions, arrival_window_s=arrival_window_s, seed=seed)
         base = run(workload, [], Policy.RECOMPUTE, link=LINKS[links[0]], **kwargs)
         for pattern in patterns:
             for notice in notices:
@@ -82,15 +82,16 @@ def table(rows: list[dict]) -> str:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--sessions", type=int, default=150)
+    parser.add_argument("--sessions", type=int, default=800,
+                        help="default gives ~36%% prefill utilization on the 12-node fleet")
     parser.add_argument("--seeds", type=int, default=3)
     parser.add_argument("--gpu", default="l40s", choices=sorted(GPUS))
     parser.add_argument("--model", default="llama-3.1-8b", choices=sorted(MODELS))
     parser.add_argument("--links", nargs="+", default=["10gbe", "25gbe"])
     parser.add_argument("--notices", nargs="+", type=float, default=[0, 30, 120])
     parser.add_argument("--patterns", nargs="+", default=["correlated", "independent"])
-    parser.add_argument("--cache-tokens", type=int, default=2_000_000)
-    parser.add_argument("--replica-tokens", type=int, default=0,
+    parser.add_argument("--cache-tokens", type=int, default=4_000_000)
+    parser.add_argument("--replica-tokens", type=int, default=4_000_000,
                         help="separate replica tier per node (0 = share primary cache)")
     parser.add_argument("--out", type=Path)
     args = parser.parse_args()
