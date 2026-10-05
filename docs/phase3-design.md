@@ -32,7 +32,11 @@ The project's question, restated in vLLM's own terms:
 1. **Notice source.** `kvevac.notice.imds.NoticeWatcher` (done). It reads the real
    IMDSv2 paths, so the same code runs against `MockIMDS` locally and against AWS
    FIS-triggered reclaims.
-2. **Stop admitting.** On notice, call the engine's
+2. **Stop admitting.** Implemented in `kvevac/notice/handler.py`, tested against a
+   fake server. It calls `POST /pause?mode=wait&clear_cache=false`; the endpoint's
+   default `clear_cache=true` would wipe the KV we are about to evacuate, and the
+   route is only registered with vLLM's development endpoints enabled. Background:
+   on notice, call the engine's
    `pause_scheduler(mode="wait")` (`vllm/v1/engine/core.py`). New requests queue and
    in-flight requests keep decoding. The router must also stop sending to this
    instance (`vllm-project/router` issue #252 covers the drain/readiness gate).
