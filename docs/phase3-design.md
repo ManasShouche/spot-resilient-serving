@@ -58,6 +58,10 @@ The project's question, restated in vLLM's own terms:
 
 ## Session-level value, block-level mechanism
 
+Implemented and tested in `kvevac/flush.py`. It expands the planner's session order
+into a prefix-ordered, deduplicated, budget-truncated list of block keys, and reports
+which sessions arrive complete, which arrive partial, and which are skipped.
+
 The planner reasons about *sessions*: size, recompute cost, P(reuse). vLLM stores
 *blocks* keyed by chained hashes. The bridge is the block-hash chain of a session's
 latest request, which the scheduler already has per request. To evacuate a session
