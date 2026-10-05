@@ -37,6 +37,7 @@ from enum import StrEnum
 from kvevac.costmodel import kv_bytes, recompute_s, transfer_s
 from kvevac.planner import Action, Destination, KVObject, plan_evacuation
 from kvevac.profiles import GpuProfile, LinkProfile, ModelProfile
+from kvevac.reuse import ReuseModel, recency_reuse_prob
 from kvevac.workload import Session, quantile
 
 
@@ -67,6 +68,8 @@ class FleetConfig:
     replicas share the primary cache and compete with live sessions for space."""
     replacement_delay_s: float = 300.0
     session_reuse_prob: float = 0.9
+    """Used by ReuseModel.FIXED."""
+    reuse_model: ReuseModel = ReuseModel.FIXED
     contention: bool = True
 
 
@@ -143,6 +146,7 @@ class SessionState:
     replica: str | None = None
     available_at: float = 0.0
     """Earliest time the session's (evacuated) cache is usable at its node."""
+    last_active: float = 0.0
 
 
 def independent_reclaims(node_ids: list[str], *, rate_per_node_h: float, horizon_s: float,
@@ -275,6 +279,7 @@ class Simulation:
         _, context, output = node.in_flight.pop(session_id)
         state = self.sessions[session_id]
         state.prefix_tokens = context + output
+        state.last_active = now
         if node.alive:
             self._insert(node, session_id, context + output)
             if self.policy in (Policy.REPLICATE, Policy.HYBRID):
@@ -330,13 +335,14 @@ class Simulation:
                                                                          doomed_ids):
                 continue
             objects.append(KVObject(session_id, tokens,
-                                    reuse_prob=self.fleet.session_reuse_prob))
+                                    reuse_prob=self._reuse_prob(session_id, now)))
         for session_id, (finish, context, output) in node.in_flight.items():
             remaining = max(0.0, finish - now)
             objects.append(KVObject(session_id, context, in_flight=True,
                                     remaining_decode_s=remaining,
                                     remaining_decode_tokens=output,
-                                    session_reuse_prob=self.fleet.session_reuse_prob))
+                                    session_reuse_prob=self._reuse_prob(session_id, now,
+                                                                        in_flight=True)))
         destinations = [
             Destination(n.id, n.group, self.fleet.cache_tokens - n.used(), self.link)
             for n in self._live_nodes() if n.id not in doomed_ids
@@ -364,6 +370,16 @@ class Simulation:
                 state.node = step.destination
                 state.available_at = now + step.end_s
             self._push(now + step.end_s, "arrive", (session_id, step.destination, tokens))
+
+    def _reuse_prob(self, session_id: str, now: float, in_flight: bool = False) -> float:
+        state = self.sessions[session_id]
+        model = self.fleet.reuse_model
+        if model is ReuseModel.ORACLE:
+            following = state.next_turn + 1 if in_flight else state.next_turn
+            return 1.0 if following < len(state.session.turns) else 0.0
+        if model is ReuseModel.RECENCY:
+            return recency_reuse_prob(0.0 if in_flight else now - state.last_active)
+        return self.fleet.session_reuse_prob
 
     def _take_replica(self, session_id: str) -> NodeState | None:
         """Fail a session over to its live replica, promoting the replica to primary."""
