@@ -18,12 +18,18 @@ at zero steady-state cost?
   agent-session workload generator, discrete-event simulator, regime sweep
   ([docs/simulator.md](docs/simulator.md)). Results are **simulated with assumed
   constants and a synthetic workload**.
-- [x] **Phase 1b:** prefill contention, hybrid policy, shared destination ingress,
-  write-through backpressure, reuse-prediction ablation, and paired-statistics
-  experiments. **Headline (simulated):** write-through plus write-back at notice
-  (hybrid) cuts reclaim-induced recompute by 55–65% with ≥ 30 s notice. Evacuation's
-  benefit tracks ρ = notice × bandwidth / resident KV. Write-through alone collapses
-  under load. See [docs/phase1b-results.md](docs/phase1b-results.md).
+- [x] **Phase 1b:** contention, hybrid policy, shared ingress, write-through
+  backpressure, reuse ablation, and paired 12-seed experiments. **Findings
+  (simulated):**
+  - With a free replica tier and unlimited bandwidth, write-through and hybrid cut
+    reclaim-induced recompute by about 55–60%. Evacuation alone gets 14–43%.
+  - At **equal memory**, evacuation wins: −50% vs +90% for write-through.
+  - Under a **shared-store bandwidth budget**, write-through drops to −25% while
+    hybrid holds −51%.
+  - Evacuation's benefit tracks ρ = notice × bandwidth / resident KV.
+
+  See [docs/phase1b-results.md](docs/phase1b-results.md), including §7,
+  corrections to an earlier 6-seed claim.
 - [x] Spot-notice harness: IMDSv2 mock and watcher on the real EC2 paths
   (`kvevac/notice/imds.py`).
 - [x] Phase 3 design against vLLM's KV tiering ([docs/phase3-design.md](docs/phase3-design.md)).

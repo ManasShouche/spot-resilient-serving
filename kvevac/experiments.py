@@ -54,6 +54,9 @@ class Setting:
     sessions: int = 800
     fleet: FleetConfig = FleetConfig(replica_tokens=4_000_000)
     burst_fraction: float = 0.5
+    policy_fleets: tuple[tuple[str, FleetConfig], ...] = ()
+    """Per-policy fleet overrides. Excess is always measured against the no-reclaim run
+    of `fleet`, so policies given different memory layouts stay directly comparable."""
 
 
 def excess_by_policy(setting: Setting, seed: int,
@@ -68,9 +71,11 @@ def excess_by_policy(setting: Setting, seed: int,
                                        fraction=setting.burst_fraction, seed=1000 + seed)
     else:
         reclaims = reclaims_for("independent", setting.fleet, setting.notice_s, 1000 + seed)
+    overrides = dict(setting.policy_fleets)
     out = {}
     for policy in policies:
-        metrics = run(workload, reclaims, policy, **kwargs)
+        fleet = overrides.get(policy.value, setting.fleet)
+        metrics = run(workload, reclaims, policy, **{**kwargs, "fleet": fleet})
         summary = metrics.summary()
         summary["excess"] = metrics.prefill_gpu_s - base.prefill_gpu_s
         summary["ttft_mean_excess"] = summary["ttft_mean_s"] - base.summary()["ttft_mean_s"]
@@ -181,12 +186,38 @@ def exp_partial() -> list[Setting]:
             for link in ("10gbe", "25gbe") for notice in (30, 120) for flag in (False, True)]
 
 
+def exp_equal_memory() -> list[Setting]:
+    """Same memory per node: 8M primary cache for recompute/evacuate, versus a 4M primary
+    plus a 4M replica tier for replicate/hybrid. Measured against one shared baseline
+    (the 8M fleet with no reclaims)."""
+    primary_only = FleetConfig(cache_tokens=8_000_000, replica_tokens=0)
+    split = FleetConfig(cache_tokens=4_000_000, replica_tokens=4_000_000)
+    overrides = (("replicate", split), ("hybrid", split))
+    return [Setting(f"{pattern}, W={notice:g}s", notice_s=notice, pattern=pattern,
+                    fleet=primary_only, policy_fleets=overrides)
+            for pattern in ("independent", "correlated") for notice in (30, 120)]
+
+
+def exp_backpressure() -> list[Setting]:
+    """Write-through under a per-node replication budget. One shared ~1 GB/s object
+    store across 12 nodes leaves ~83 MB/s per node."""
+    settings = []
+    for budget in (None, 200e6, 83e6, 40e6):
+        fleet = FleetConfig(replica_tokens=4_000_000, replication_bytes_per_s=budget)
+        name = "unlimited" if budget is None else f"{budget / 1e6:.0f} MB/s"
+        settings.append(Setting(f"replication {name}, W=120s", fleet=fleet))
+    return settings
+
+
 EXPERIMENTS = {
     "main": (exp_main, None),
     "budget": (exp_budget, (Policy.RECOMPUTE, Policy.EVACUATE)),
     "sensitivity": (exp_sensitivity, None),
     "reuse": (exp_reuse, (Policy.RECOMPUTE, Policy.EVACUATE)),
     "partial": (exp_partial, (Policy.RECOMPUTE, Policy.EVACUATE, Policy.HYBRID)),
+    "equal_memory": (exp_equal_memory, None),
+    "backpressure": (exp_backpressure,
+                     (Policy.RECOMPUTE, Policy.EVACUATE, Policy.REPLICATE, Policy.HYBRID)),
 }
 
 

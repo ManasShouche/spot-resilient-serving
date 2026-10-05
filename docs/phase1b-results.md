@@ -1,109 +1,147 @@
-# Phase 1b results (simulated)
+# Phase 1b results (simulated, 12 seeds)
 
 **Status of these numbers:** discrete-event simulation. The workload is synthetic
 agent sessions fitted to the published AgentX marginals. Hardware constants are
-assumed (`kvevac/profiles.py`). Six seeds per setting. Every policy within a seed
-sees the same workload and reclaim schedule, so comparisons with `recompute` are
-**paired**: Δ is the mean per-seed difference, ± its 95% t-interval. Raw tables and
-JSON are in `results/phase1b/`. Reproduce with:
+assumed (`kvevac/profiles.py`). Every policy within a seed sees the same workload
+and reclaim schedule, so comparisons are **paired**: Δ is the mean per-seed
+difference against `recompute`, ± its 95% t-interval over 12 seeds. Tables and JSON
+are in `results/phase1b/`. Reproduce with:
 
 ```bash
-python -m kvevac.experiments all --seeds 6 --out results/phase1b
+python -m kvevac.experiments all --seeds 12 --out results/phase1b
 ```
 
-Default setting: 12 nodes in 3 failure groups, 4M-token session cache per node and
-a 4M-token replica tier, 800 sessions (≈36% prefill utilization), Llama-3.1-8B on
-L40S, 25GbE, independent reclaims at 0.1 per node-hour. Headline metric: **excess
-prefill GPU-seconds** against the same run with no reclaims.
+Default: 12 nodes in 3 failure groups, 4M-token session cache per node, 800 sessions
+(≈36% prefill utilization), Llama-3.1-8B on L40S, 25GbE, independent reclaims at
+0.1 per node-hour. Write-through (`replicate`) gets a **separate 4M-token replica
+tier and unlimited replication bandwidth** unless stated otherwise. Those are
+generous assumptions, and §3–4 relax them. Metric: **excess prefill GPU-seconds**
+against a no-reclaim run.
+
+## Headline
+
+1. **Under generous assumptions, write-through is strong and the hybrid is best.**
+   With a free full-size replica tier and unlimited bandwidth, write-through cuts
+   reclaim-induced recompute by 51–59% at any notice. Hybrid (write-through plus
+   write-back at notice) matches it (−56% to −61%) and also protects in-flight
+   turns: 1–5 killed vs 20–27. Evacuation alone gets −14% to −43%.
+2. **At equal memory, evacuation wins decisively.** If the replica tier's memory is
+   used as primary cache instead, recompute-plus-evacuation beats write-through by a
+   wide margin (§3). Halving the primary cache to hold replicas costs more misses
+   than replication saves.
+3. **Under a realistic shared-store bandwidth budget, write-through degrades and
+   evacuation does not** (§4). Hybrid stays robust.
+4. **Evacuation's benefit is governed by ρ = W·B / resident KV** (§2).
+5. **Reuse prediction is the main lever left for evacuation** (§5).
 
 ## 1. Main regime map (`results/phase1b/main.md`)
 
 Δ% vs `recompute`, independent / correlated (half a failure group per burst):
 
-| notice W | drain_local | evacuate | replicate (write-through) | **hybrid** |
+| notice W | drain_local | evacuate | replicate | hybrid |
 |---|---|---|---|---|
-| 0 s | 0 / 0 | 0 / 0 | −29% / −13% | −29% / −13% |
-| 30 s | −10% / −11% | −18% / −10% | −36% / −16% | **−61% / −58%** |
-| 120 s | −6% / +1% | −41% / −43% | −24% / −19% | **−65% / −55%** |
+| 0 s | 0 / 0 | 0 / 0 | −51% / −58% | −51% / −58% |
+| 30 s | −7% / −4% | −23% / −14% | −59% / −56% | −58% / −61% |
+| 120 s | 0% / −1% | −43% / −41% | −57% / −59% | −56% / −60% |
 
-- **The hybrid is the finding.** Write-through protects idle sessions
-  continuously. Evacuation at notice protects what write-through misses: in-flight
-  turns (killed turns fall from about 24 to 1–6) and replicas that are stale or were
-  evicted. The two cover different failures, so the combination beats both. Its
-  intervals exclude zero in every setting with W ≥ 30 s.
-- **Evacuation alone beats write-through only with enough notice.** At 120 s it
-  gets −41% vs −24%. At 30 s it is the other way round. With 0 s notice, only
-  write-through helps, which is the expected boundary.
-- **Draining locally alone is roughly worthless.** It also hurts badly under cache
-  pressure (see §3).
+Killed in-flight turns, independent W=120 s: recompute 24.3, replicate 25.5,
+evacuate 1.5, hybrid 1.3. Draining alone saves in-flight turns but not caches, and
+it is never significantly better than doing nothing.
 
 ## 2. The governing ratio (`results/phase1b/budget.md`)
 
-Evacuation's benefit tracks **ρ = W · B / (KV resident on the reclaimed node)**:
-
-| ρ | ≤ 0.12 | 0.19–0.26 | 0.40–0.51 | ≈ 1.0 | 2–4 |
-|---|---|---|---|---|---|
-| Δ% (evacuate vs recompute) | −2% to −6% | −11% to −18% | −13% to −31% | −41% to −44% | −47% to −57% |
-
-The benefit is close to monotone in ρ and saturates above about 1. The spread at
-equal ρ (10GbE W=120 s at −13% vs 25GbE W=60 s at −31%) suggests that ρ is not
-sufficient on its own. A likely second factor is per-object transfer granularity:
-on a slower link, each 100k+-token session takes longer to ship, so fewer complete
-sessions finish. **Paper-ready framing:** a dimensionless ratio that operators can
-compute from their notice window, NIC, and cache size predicts whether evacuation is
-worth deploying.
-
-## 3. Sensitivity (`results/phase1b/sensitivity.md`)
-
-| Setting | evacuate | replicate | hybrid | Reading |
+| link | W=15 s | 30 s | 60 s | 120 s |
 |---|---|---|---|---|
-| default (for reference) | −41% | −24% | −65% | |
-| cache 2M (pressure) | −31% | +2% | −28% | Write-through stops helping under cache pressure; draining is +53% (harmful) |
-| cache 8M (roomy) | −50% | −47% | **−88%** | With room, the combination nearly eliminates the loss |
-| 400 sessions | −65% | −37% | −85% | |
-| 1200 sessions (high load) | −42% | **−1%** | −39% | **Write-through collapses under load** (replica churn); evacuation does not |
-| 70B on 4×H100 | −22% | −23% | −55% | Bigger KV per token lowers ρ to 0.42 |
-| whole-group bursts | −15% | −3% | −32% | Correlated reclaim is the hard case for everything |
-| quarter-group bursts | −30% | −19% | −52% | |
-| replica tier 1M | −41% | −15% | −58% | A small replica tier thrashes: 585 MB/s/node re-shipping full contexts |
+| 10GbE (ρ ≈ 0.05–0.40) | −9% | −11% | −11% | −19% |
+| 25GbE (ρ ≈ 0.13–1.0) | −9% | −23% | −25% | −43% |
+| 100GbE (ρ ≈ 0.5–4.0) | −31% | −45% | −52% | −57% |
 
-## 4. How much would better reuse prediction help? (`results/phase1b/reuse.md`)
+The benefit is close to monotone in ρ and saturates above about 1. Operators can
+compute ρ from their notice window, NIC, and cache size to decide whether evacuation
+is worth deploying. Shipping partial prefixes to use leftover notice time adds only
+0–5 points (`partial.md`; not significant).
+
+## 3. Equal memory (`results/phase1b/equal_memory.md`)
+
+8M tokens per node, either as an 8M primary cache (recompute, evacuate) or as a 4M
+primary plus 4M replica tier (replicate, hybrid). All rows are measured against the
+same baseline: the 8M primary fleet with no reclaims.
+
+| | W=30 s ind / corr | W=120 s ind / corr |
+|---|---|---|
+| evacuate (8M primary) | −19% / −13% | **−50% / −46%** |
+| replicate (4M + 4M) | +90% / +94% | +94% / +84% |
+| hybrid (4M + 4M) | +91% / +88% | +96% / +83% |
+
+**Caveat:** this holds when the replica tier is the same scarce memory (host DRAM
+or HBM) as the primary cache. If replicas live on cheap capacity (local SSD, an
+object store), capacity is no longer the constraint; bandwidth (§4) and restore
+latency are. Restore latency from a remote store is not modelled for write-through,
+which flatters it.
+
+## 4. Write-through under a bandwidth budget (`results/phase1b/backpressure.md`)
+
+A per-node replication budget with drop-on-backpressure, in the shape of vLLM's
+`ThrottledDropPolicy`. W = 120 s.
+
+| replication budget per node | replicate | hybrid | evacuate |
+|---|---|---|---|
+| unlimited | −57% | −56% | −43% |
+| 200 MB/s | −44% | −56% | −43% |
+| **83 MB/s** (one ~1 GB/s store shared by 12 nodes) | **−25%** | **−51%** | −43% |
+| 40 MB/s | −21% | −47% | −43% |
+
+Unconstrained write-through needs about 70–85 MB/s per node on average, but its
+bursts exceed that, so even a 200 MB/s budget drops updates. **With a shared store,
+evacuation alone beats write-through. Hybrid is robust because evacuation fills
+exactly the gaps that dropped writes leave.**
+
+## 5. Reuse prediction (`results/phase1b/reuse.md`)
 
 | W | fixed P=0.9 | recency (idle time) | oracle |
 |---|---|---|---|
-| 30 s | −18% | −25% | −32% |
-| 120 s | −41% (1051 GB) | −46% (916 GB) | **−62% (584 GB)** |
+| 30 s | −23% | −28% | −36% |
+| 120 s | −43% | −47% | **−61%** |
 
-Knowing which sessions will come back is worth about 20 more points *while moving
-45% less data*. A simple recency model captures about a quarter of that.
-**Open sub-problem:** predict session continuation from agent semantics (tool-call
-state, plan progress). SemSpot (arXiv 2608.29581) points the same way at the API
-level.
+Perfect knowledge of which sessions return is worth about 18 more points at 120 s,
+and it moves less data. The recency model captures about a fifth of that.
+**Open sub-problem:** predict session continuation from agent semantics, such as
+tool-call state and plan progress (compare SemSpot, arXiv 2608.29581).
 
-## 5. Correcting an earlier framing: steady-state cost
+## 6. Sensitivity (`results/phase1b/sensitivity.md`)
 
-v0's docs said evacuation used "15× less egress" than write-through. That compared
-totals and overstated the case. Write-through ships only each turn's new tokens, so
-its *rate* is modest: **about 70–85 MB/s per node** by default (3–7% of a
-10–25GbE NIC), rising to 160–240 MB/s under high load or with the 70B model, and
-585 MB/s when the replica tier thrashes. The real costs of write-through are:
+| setting | evacuate | replicate | hybrid |
+|---|---|---|---|
+| cache 2M (pressure) | −18% | −12% | −32% |
+| cache 8M | −50% | −79% | −85% |
+| 400 sessions | −63% | −79% | −84% |
+| 1200 sessions | −22% | −45% | −56% |
+| 70B on 4×H100 (ρ ≈ 0.4) | −28% | −58% | −63% |
+| whole-group bursts | −22% | −27% | −38% |
+| quarter-group bursts | −40% | −59% | −59% |
+| replica tier 1M | −43% | −31% | −58% |
 
-1. **Replica capacity.** It needs a tier as large as the primary cache to work
-   (§3, replica tier 1M).
-2. **Shared-tier saturation.** Twelve nodes at 85 MB/s already saturate one
-   ~1 GB/s object store. That is where vLLM's `ThrottledDropPolicy` starts dropping
-   stores (modelled by `FleetConfig.replication_bytes_per_s`).
-3. **Coverage.** It does not protect in-flight turns. It becomes stale under load.
+Hybrid is best or tied everywhere. Cache pressure and whole-group bursts are hard
+for every policy. Evacuation alone beats write-through only when the replica tier is
+undersized.
 
-Evacuation's advantage is that it costs nothing until a notice arrives. **The
-strongest system is both: write-through within budget, and write-back at notice.**
+## 7. Corrections to earlier claims
 
-## Threats to validity (see also `docs/simulator.md`)
-- Assumed hardware constants. Phase 2 measures them. The ordering of policies is
-  what must survive, not the percentages.
-- Synthetic workload. The real AgentX replay is blocked on data access.
-- Six seeds. Several intervals are wide. Rerun main with `--seeds 20` before quoting
-  any number.
-- The replica tier updates instantly; the queue models only drops. This flatters
-  write-through.
+The 6-seed results committed earlier (`249c4f5`) contained two errors, both caused
+by a simulator bug fixed in `083792e`. A turn still decoding at termination was
+restarted on a random node instead of the node holding its prefix (its replica, or
+its evacuation destination). That understated *both* write-through and evacuation,
+and write-through more so. With the fix and 12 seeds:
+
+- "Hybrid dominates write-through" → **hybrid ≈ write-through on recompute**, and
+  better on killed turns and under bandwidth limits.
+- "Write-through collapses under high load" → **false** (−45% at 1200 sessions).
+
+## Threats to validity
+- Hardware constants are assumed. Phase 2 measures them. The *orderings* must
+  survive calibration, not the percentages.
+- The workload is synthetic. The real AgentX replay is blocked on data access.
+- Replica updates land instantly, and there is no restore latency from a replica.
+  Both flatter write-through.
 - Evacuation traffic does not slow serving. This flatters evacuation.
+- Decode is not modelled as contending; prefill is serialized per node.
