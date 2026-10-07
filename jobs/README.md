@@ -78,7 +78,7 @@ and attach it in the project thread.
 ### Settings
 Environment variables, e.g. `MAX_MIN=60 bash kvevac-aws.sh`: `INSTANCE_TYPE`
 (g6e.xlarge), `MAX_MIN` (90, the self-terminate timer), `ROOT_GB` (150), `SUBNET_ID`,
-`POLL_S` (15), `SKIP_FIS=1`; passed to the instance: `MODEL`, `MAX_MODEL_LEN`,
+`POLL_S` (15), `SKIP_FIS=1`, `MARKET` (auto / spot / on-demand); passed to the instance: `MODEL`, `MAX_MODEL_LEN`,
 `VLLM_SPEC` (e.g. `vllm==0.11.0` to pin), `PREFILL_CONTEXTS`, `PREFILL_REPEATS`,
 `INTERFERENCE_REPEATS`.
 
@@ -87,7 +87,11 @@ Environment variables, e.g. `MAX_MIN=60 bash kvevac-aws.sh`: `INSTANCE_TYPE`
   deletes leftover FIS templates. Run it if you are unsure; it is safe to repeat.
 - "spot vCPU quota too low": request an increase for *All G and VT Spot Instance
   Requests* in Service Quotas.
-- "no zone had spot capacity": try again later or another region.
+- No spot capacity: by default (`MARKET=auto`) the runner then launches the same
+  instance on-demand (about the same price in us-east-1 lately, $1.86/h; your on-demand
+  G quota of 8 vCPUs covers it). That run still measures prefill, decode and slowdown, but
+  skips FIS, because FIS can only interrupt spot instances, so there is no notice timing.
+  `MARKET=spot` refuses the fallback; `MARKET=on-demand` skips spot entirely.
 - The results tarball always includes `job.tail.log` and `vllm.tail.log`, also when
   the job failed, so the cause is visible.
 
