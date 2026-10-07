@@ -22,6 +22,13 @@ No tokens, SSH keys, S3 buckets or instance IAM roles. The instance has internet
 for pip and HuggingFace but no AWS credentials; results come back over its serial
 console (`get-console-output`) as numbered, SHA-256-checked chunks.
 
+### Permissions
+CloudShell runs as your console identity, which normally has what it needs. To run with
+a narrower IAM user instead (for example the `kvevac` user Claude uses), attach
+`jobs/aws/iam-policy.json` to it as an inline policy. It allows launching only
+`g6e.xlarge`, terminating only instances tagged `project=kvevac-aws`, the FIS calls, and
+creating and passing only the `kvevac-fis` role.
+
 ### Run it
 1. Open AWS CloudShell in the region you want (us-east-1 has the most g6e capacity).
 2. Actions → **Upload file** → `jobs/aws/kvevac-aws.sh` from this repo.
