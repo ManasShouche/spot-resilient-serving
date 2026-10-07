@@ -75,18 +75,4 @@ grep -Eq '"announced_notice_s": (1[89]|2[01])' "$RUN/notice.json" || fail "bad n
 [ "$("$PY" "$ROOT/jobs/aws/fake_aws.py" ec2 describe-instances --query \
   'Reservations[0].Instances[0].State.Name' --output text)" = terminated ] || fail "instance alive"
 [ -s "$TMP/runs/$(readlink "$TMP/runs/latest").tar.gz" ] || fail "no run tarball"
-echo "spot path OK"
-
-# Second run: no spot capacity anywhere, so the runner falls back to on-demand,
-# measures the same things and skips FIS (it can only interrupt spot instances).
-: >"$KVEVAC_CONSOLE"  # a new instance starts with an empty console
-FAKE_AWS_NO_SPOT=1 bash "$ROOT/jobs/aws/kvevac-aws.sh" run | tee "$TMP/ondemand.log"
-RUN="$TMP/runs/$(readlink "$TMP/runs/latest")"
-grep -q "falling back to on-demand" "$TMP/ondemand.log" || fail "no on-demand fallback"
-[ -s "$RUN/results/prefill.json" ] || fail "on-demand run: no prefill.json"
-[ ! -f "$RUN/notice.json" ] || fail "on-demand run should have no notice timing"
-grep -q "FIS         not run (on-demand" "$TMP/ondemand.log" || fail "summary does not explain FIS"
-[ "$(grep -c "fis start-experiment" "$TMP/state/calls.log")" = 1 ] || fail "FIS started on the on-demand run"
-[ "$("$PY" "$ROOT/jobs/aws/fake_aws.py" ec2 describe-instances --query \
-  'Reservations[0].Instances[0].State.Name' --output text)" = terminated ] || fail "on-demand instance alive"
 echo "DRY RUN OK"

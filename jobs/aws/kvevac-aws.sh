@@ -21,8 +21,7 @@
 #
 # Settings (environment variables): INSTANCE_TYPE (g6e.xlarge), MAX_MIN (90), ROOT_GB
 # (150), SUBNET_ID (default: the default VPC's subnets, cheapest zone first), POLL_S (15),
-# SKIP_FIS=1, MARKET (auto: spot, then on-demand without FIS if no zone has spot
-# capacity; or spot / on-demand), and for the instance: MODEL, MAX_MODEL_LEN, VLLM_SPEC, PREFILL_CONTEXTS,
+# SKIP_FIS=1, and for the instance: MODEL, MAX_MODEL_LEN, VLLM_SPEC, PREFILL_CONTEXTS,
 # PREFILL_REPEATS, INTERFERENCE_REPEATS.
 set -euo pipefail
 
@@ -30,8 +29,6 @@ INSTANCE_TYPE="${INSTANCE_TYPE:-g6e.xlarge}"
 MAX_MIN="${MAX_MIN:-90}"
 ROOT_GB="${ROOT_GB:-150}"
 POLL_S="${POLL_S:-15}"
-MARKET="${MARKET:-auto}"  # auto: spot, then on-demand if no zone has spot capacity
-ON_DEMAND_PRICE="${ON_DEMAND_PRICE:-1.861}"  # g6e.xlarge us-east-1, for the cost estimate
 NOTICE_WAIT_S="${NOTICE_WAIT_S:-420}"
 RUNS="${KVEVAC_RUNS:-$HOME/kvevac-runs}"
 AMI_PARAM="${AMI_PARAM:-/aws/service/deeplearning/ami/x86_64/base-oss-nvidia-driver-gpu-ubuntu-22.04/latest/ami-id}"
@@ -506,43 +503,8 @@ candidate_subnets() {  # lines "price az subnet", cheapest first, zones offering
   done | sort -n
 }
 
-try_launch() {  # try_launch MARKET PRICE AZ SUBNET: 0 = launched, 1 = no capacity there
-  local market="$1" price="$2" az="$3" subnet="$4" market_opts=() code
-  if [ "$market" = spot ]; then
-    say "requesting a spot $INSTANCE_TYPE in $az (spot price \$$price/h)"
-    market_opts=(--instance-market-options
-      '{"MarketType":"spot","SpotOptions":{"SpotInstanceType":"one-time","InstanceInterruptionBehavior":"terminate"}}')
-  else
-    say "requesting an on-demand $INSTANCE_TYPE in $az"
-  fi
-  if IID="$(aws ec2 run-instances --instance-type "$INSTANCE_TYPE" --image-id "$LAUNCH_AMI" \
-      --subnet-id "$subnet" --count 1 "${market_opts[@]}" \
-      --instance-initiated-shutdown-behavior terminate \
-      --metadata-options HttpTokens=required,HttpEndpoint=enabled \
-      --block-device-mappings "[{\"DeviceName\":\"$LAUNCH_ROOTDEV\",\"Ebs\":{\"VolumeSize\":$ROOT_GB,\"VolumeType\":\"gp3\",\"DeleteOnTermination\":true}}]" \
-      --user-data "fileb://$RUN_DIR/user-data.gz" \
-      --tag-specifications "ResourceType=instance,Tags=[{Key=project,Value=$TAG},{Key=Name,Value=kvevac-$STAMP}]" \
-        "ResourceType=volume,Tags=[{Key=project,Value=$TAG}]" \
-      --query 'Instances[0].InstanceId' --output text 2>"$RUN_DIR/launch.err")"; then
-    save IID "$IID"; save AZ "$az"; save MARKET_USED "$market"; save LAUNCHED_AT "$(now)"
-    if [ "$market" = spot ]; then save SPOT_PRICE "$price"; else save SPOT_PRICE "$ON_DEMAND_PRICE"; fi
-    return 0
-  fi
-  IID=""
-  code="$(grep -o '(\([A-Za-z.]*\))' "$RUN_DIR/launch.err" | head -1 || true)"
-  cat "$RUN_DIR/launch.err" >>"$RUN_DIR/launch.log"
-  case "$(cat "$RUN_DIR/launch.err")" in
-    *InsufficientInstanceCapacity*|*capacity-not-available*|*SpotMaxPriceTooLow*|*Unsupported*)
-      say "no $market capacity in $az $code; trying the next option"
-      return 1 ;;
-    *MaxSpotInstanceCountExceeded*|*VcpuLimitExceeded*)
-      die "$market vCPU quota too low for $INSTANCE_TYPE: $(cat "$RUN_DIR/launch.err")" ;;
-    *) die "run-instances failed: $(cat "$RUN_DIR/launch.err")" ;;
-  esac
-}
-
 launch() {
-  local candidates rootdev snapshot_gb ami
+  local candidates err rootdev snapshot_gb ami
   ACCOUNT="$(aws sts get-caller-identity --query Account --output text)" \
     || die "the AWS CLI has no working credentials (run this in AWS CloudShell)"
   save ACCOUNT "$ACCOUNT"
@@ -562,27 +524,34 @@ launch() {
     ROOT_GB=$((snapshot_gb + 50))
   fi
   say "AMI $ami (Deep Learning Base OSS Nvidia, Ubuntu 22.04), root volume ${ROOT_GB} GB"
-  LAUNCH_AMI="$ami" LAUNCH_ROOTDEV="$rootdev"
   make_user_data
   candidates="$(candidate_subnets)"
   [ -n "$candidates" ] || die "no default-VPC subnet in a zone that offers $INSTANCE_TYPE; set SUBNET_ID"
-  # Spot first, cheapest zone first. If no zone has spot capacity and MARKET=auto
-  # (the default), fall back to on-demand: same measurements, but no FIS notice timing,
-  # because FIS spot interruptions only work on spot instances.
-  local markets
-  case "$MARKET" in
-    spot) markets="spot" ;;
-    on-demand) markets="on-demand" ;;
-    *) markets="spot on-demand" ;;
-  esac
-  for market in $markets; do
-    while read -r price az subnet; do
-      try_launch "$market" "$price" "$az" "$subnet" && break 2
-    done <<<"$candidates"
-    [ "$market" = spot ] && [ "$markets" != spot ] \
-      && say "no zone had spot capacity; falling back to on-demand (no FIS notice timing this run)"
-  done
-  [ -n "${IID:-}" ] || die "no zone had capacity for $INSTANCE_TYPE ($MARKET); try again later"
+  while read -r price az subnet; do
+    say "requesting a spot $INSTANCE_TYPE in $az (spot price \$$price/h)"
+    if IID="$(aws ec2 run-instances --instance-type "$INSTANCE_TYPE" --image-id "$ami" \
+        --subnet-id "$subnet" --count 1 \
+        --instance-market-options '{"MarketType":"spot","SpotOptions":{"SpotInstanceType":"one-time","InstanceInterruptionBehavior":"terminate"}}' \
+        --instance-initiated-shutdown-behavior terminate \
+        --metadata-options HttpTokens=required,HttpEndpoint=enabled \
+        --block-device-mappings "[{\"DeviceName\":\"$rootdev\",\"Ebs\":{\"VolumeSize\":$ROOT_GB,\"VolumeType\":\"gp3\",\"DeleteOnTermination\":true}}]" \
+        --user-data "fileb://$RUN_DIR/user-data.gz" \
+        --tag-specifications "ResourceType=instance,Tags=[{Key=project,Value=$TAG},{Key=Name,Value=kvevac-$STAMP}]" \
+          "ResourceType=volume,Tags=[{Key=project,Value=$TAG}]" \
+        --query 'Instances[0].InstanceId' --output text 2>"$RUN_DIR/launch.err")"; then
+      save IID "$IID"; save AZ "$az"; save SPOT_PRICE "$price"; save LAUNCHED_AT "$(now)"
+      break
+    fi
+    err="$(cat "$RUN_DIR/launch.err")"
+    case "$err" in
+      *InsufficientInstanceCapacity*|*capacity-not-available*|*SpotMaxPriceTooLow*|*Unsupported*)
+        say "no spot capacity in $az; trying the next zone" ;;
+      *MaxSpotInstanceCountExceeded*|*VcpuLimitExceeded*)
+        die "spot vCPU quota too low for $INSTANCE_TYPE: $err" ;;
+      *) die "run-instances failed: $err" ;;
+    esac
+  done <<<"$candidates"
+  [ -n "${IID:-}" ] || die "no zone had spot capacity for $INSTANCE_TYPE; try again later"
   say "launched $IID; waiting for it to start"
   aws ec2 wait instance-running --instance-ids "$IID"
 }
@@ -724,8 +693,7 @@ def load(name):
         return None
 print("\n==== kvevac Phase 2 run summary ====")
 print(f"run dir     {run}")
-print(f"instance    {state.get('IID', '-')} in {state.get('AZ', '-')} "
-      f"({state.get('MARKET_USED', '-')})")
+print(f"instance    {state.get('IID', '-')} in {state.get('AZ', '-')}")
 env = load("results/env.json") or {}
 print(f"stack       vllm {env.get('vllm', '?')}, torch {env.get('torch', '?')}, "
       f"cuda {env.get('cuda', '?')}, gpu {env.get('gpu', '?')}")
@@ -752,10 +720,7 @@ if notice:
     print(f"notice      announced {n['announced_notice_s']}s, rebalance lead "
           f"{n['rebalance_lead_s']}s, last heartbeat vs announced "
           f"{n['termination_vs_announced_s']}s ({n['heartbeats']} heartbeats)")
-fis_state = state.get("EXPERIMENT_STATE", "not run")
-if state.get("MARKET_USED") == "on-demand":
-    fis_state = "not run (on-demand instance; FIS can only interrupt spot instances)"
-print(f"FIS         {fis_state}")
+print(f"FIS         {state.get('EXPERIMENT_STATE', 'not run')}")
 try:
     hours = (int(state["ENDED_AT"]) - int(state["LAUNCHED_AT"])) / 3600
     cost = hours * float(state.get("SPOT_PRICE", "0"))
@@ -808,7 +773,7 @@ case "$cmd" in
     cleanup_all
     exit 0
     ;;
-  -h|--help|help) sed -n '2,28p' "$0"; exit 0 ;;
+  -h|--help|help) sed -n '2,27p' "$0"; exit 0 ;;
   *) echo "usage: bash $0 [run|resume [run-dir]|cleanup]"; exit 2 ;;
 esac
 export AWS_DEFAULT_REGION="$REGION" AWS_PAGER=""
@@ -826,10 +791,7 @@ say "now and then; if the session is lost, the instance still powers off after $
 if [ "${RESULTS_OK:-0}" != 1 ]; then
   collect_results || true
 fi
-if [ "${MARKET_USED:-spot}" != spot ] && [ -z "${EXPERIMENT_ID:-}" ]; then
-  say "on-demand instance: skipping the FIS spot interruption, so no notice timing this run"
-  cleanup_run
-elif [ "${SKIP_FIS:-0}" != 1 ] && [ -z "${EXPERIMENT_ID:-}" ] && [ "$(instance_state)" = running ]; then
+if [ "${SKIP_FIS:-0}" != 1 ] && [ -z "${EXPERIMENT_ID:-}" ] && [ "$(instance_state)" = running ]; then
   interrupt && follow_notice
 elif [ -n "${EXPERIMENT_ID:-}" ] && [ -z "${EXPERIMENT_STATE:-}" ]; then
   follow_notice
