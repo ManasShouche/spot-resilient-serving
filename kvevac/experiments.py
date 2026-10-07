@@ -10,7 +10,9 @@ Usage:
     python -m kvevac.experiments budget      --seeds 6
     python -m kvevac.experiments sensitivity --seeds 6
     python -m kvevac.experiments reuse       --seeds 6
+    python -m kvevac.experiments baselines   --seeds 6   # related-work baselines
     python -m kvevac.experiments all         --seeds 6 --out results/phase1b
+    python -m kvevac.experiments main --trace data/raw/agentx.jsonl   # real sessions
 """
 
 from __future__ import annotations
@@ -18,6 +20,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import multiprocessing
 import os
 import statistics
 import time
@@ -29,9 +32,9 @@ from pathlib import Path
 from kvevac.calibration import load_calibration
 from kvevac.profiles import GPUS, LINKS, MODELS
 from kvevac.reuse import ReuseModel
-from kvevac.sim import FleetConfig, Policy, correlated_reclaims, run
+from kvevac.sim import CORE_POLICIES, FleetConfig, Policy, correlated_reclaims, run
 from kvevac.sweep import fleet_groups, reclaims_for
-from kvevac.workload import synthetic_sessions
+from kvevac.workload import Session, load_agentx_jsonl, synthetic_sessions
 
 # Two-sided 95% t critical values by degrees of freedom.
 _T95 = {1: 12.71, 2: 4.30, 3: 3.18, 4: 2.78, 5: 2.57, 6: 2.45, 7: 2.36, 8: 2.31, 9: 2.26,
@@ -58,11 +61,30 @@ class Setting:
     policy_fleets: tuple[tuple[str, FleetConfig], ...] = ()
     """Per-policy fleet overrides. Excess is always measured against the no-reclaim run
     of `fleet`, so policies given different memory layouts stay directly comparable."""
+    variants: tuple[tuple[str, str, FleetConfig | None], ...] = ()
+    """Extra rows: (row name, policy, fleet override or None). Lets one policy appear
+    twice with different settings, e.g. a 1-replica and a 2-replica pool."""
+    trace: str | None = None
+    """AgentX JSONL path. None: the synthetic AgentX-calibrated generator."""
+
+
+_TRACE_CACHE: dict[tuple[str, int, int], list[Session]] = {}
+
+
+def workload_for(setting: Setting, seed: int) -> list[Session]:
+    if setting.trace is None:
+        return synthetic_sessions(setting.sessions, arrival_window_s=7200, seed=seed)
+    key = (setting.trace, setting.sessions, seed)
+    if key not in _TRACE_CACHE:
+        # Seeds vary the synthesized session start times; the sessions themselves are real.
+        _TRACE_CACHE[key] = load_agentx_jsonl(Path(setting.trace), arrival_window_s=7200,
+                                              seed=seed, max_sessions=setting.sessions)
+    return _TRACE_CACHE[key]
 
 
 def excess_by_policy(setting: Setting, seed: int,
-                     policies: Iterable[Policy] = tuple(Policy)) -> dict[str, dict]:
-    workload = synthetic_sessions(setting.sessions, arrival_window_s=7200, seed=seed)
+                     policies: Iterable[Policy] = CORE_POLICIES) -> dict[str, dict]:
+    workload = workload_for(setting, seed)
     kwargs = dict(fleet=setting.fleet, model=MODELS[setting.model], gpu=GPUS[setting.gpu],
                   link=LINKS[setting.link])
     base = run(workload, [], Policy.RECOMPUTE, **kwargs)
@@ -73,14 +95,16 @@ def excess_by_policy(setting: Setting, seed: int,
     else:
         reclaims = reclaims_for("independent", setting.fleet, setting.notice_s, 1000 + seed)
     overrides = dict(setting.policy_fleets)
+    rows = [(p.value, p, overrides.get(p.value, setting.fleet)) for p in policies]
+    rows += [(name, Policy(policy), fleet or setting.fleet)
+             for name, policy, fleet in setting.variants]
     out = {}
-    for policy in policies:
-        fleet = overrides.get(policy.value, setting.fleet)
+    for name, policy, fleet in rows:
         metrics = run(workload, reclaims, policy, **{**kwargs, "fleet": fleet})
         summary = metrics.summary()
         summary["excess"] = metrics.prefill_gpu_s - base.prefill_gpu_s
         summary["ttft_mean_excess"] = summary["ttft_mean_s"] - base.summary()["ttft_mean_s"]
-        out[policy.value] = summary
+        out[name] = summary
     return out
 
 
@@ -99,13 +123,16 @@ def _job(args: tuple[Setting, int, tuple[Policy, ...]]) -> dict[str, dict]:
 
 
 def run_settings(settings: list[Setting], seeds: int,
-                 policies: Iterable[Policy] = tuple(Policy),
+                 policies: Iterable[Policy] = CORE_POLICIES,
                  jobs: int = 1) -> dict[str, list[dict]]:
     """Run every (setting, seed) pair; `jobs > 1` fans out over processes."""
     tasks = [(setting, seed, tuple(policies)) for setting in settings
              for seed in range(seeds)]
     if jobs > 1:
-        with ProcessPoolExecutor(max_workers=jobs) as pool:
+        # fork, not macOS's default spawn: workers must inherit --calibration overrides
+        # made to the module-level profile tables.
+        with ProcessPoolExecutor(max_workers=jobs,
+                                 mp_context=multiprocessing.get_context("fork")) as pool:
             outputs = list(pool.map(_job, tasks))
     else:
         outputs = [_job(task) for task in tasks]
@@ -119,8 +146,9 @@ def render(results: dict[str, list[dict]], *, reference: str = "recompute",
            policies: Iterable[str] | None = None) -> str:
     lines = [
         "| setting | policy | excess prefill GPU-s (mean) | vs recompute: Δ ± 95% CI | "
-        "Δ% | ΔTTFT mean (s) | killed turns | notice GB | replication GB | budget ratio |",
-        "|---|---|---|---|---|---|---|---|---|---|",
+        "Δ% | ΔTTFT mean (s) | displaced TTFT p99 (s) | killed turns | notice GB | "
+        "replication GB | budget ratio |",
+        "|---|---|---|---|---|---|---|---|---|---|---|",
     ]
     for label, per_seed in results.items():
         names = list(policies or per_seed[0].keys())
@@ -136,6 +164,7 @@ def render(results: dict[str, list[dict]], *, reference: str = "recompute",
             lines.append(
                 f"| {label} | {name} | {statistics.mean(vals):.0f} | {ci} | {pct_text} | "
                 f"{statistics.mean(r['ttft_mean_excess'] for r in rows):+.2f} | "
+                f"{statistics.mean(r.get('displaced_ttft_p99_s', 0.0) for r in rows):.1f} | "
                 f"{statistics.mean(r['killed_turns'] for r in rows):.1f} | "
                 f"{statistics.mean(r['notice_egress_GB'] for r in rows):.0f} | "
                 f"{statistics.mean(r['replication_egress_GB'] for r in rows):.0f} | "
@@ -232,6 +261,28 @@ def exp_interference() -> list[Setting]:
             for f in (0.0, 0.25, 0.5, 1.0)]
 
 
+def exp_baselines() -> list[Setting]:
+    """Related-work baselines next to ours (docs/positioning.md, experiment 4): in-flight
+    replication (KevlarFlow/LUMEN) and a Mooncake-style pool sharded across the spot
+    nodes with one and two copies. The pool and replicas get the same 4M-token tier."""
+    pool2 = FleetConfig(replica_tokens=4_000_000, pool_replicas=2)
+    variants = (("pool x2", "pool", pool2),)
+    return [Setting(f"{pattern}, W={notice:g}s", notice_s=notice, pattern=pattern,
+                    variants=variants)
+            for pattern in ("independent", "correlated") for notice in (0, 30, 120)]
+
+
+def exp_hinted() -> list[Setting]:
+    """How accurate must a metadata reuse predictor be before it moves evacuation?"""
+    base = FleetConfig(replica_tokens=4_000_000, reuse_model=ReuseModel.HINTED)
+    return [Setting(f"hint accuracy {accuracy:.2f}, W={notice:g}s", notice_s=notice,
+                    link="10gbe", fleet=replace(base, hint_accuracy=accuracy))
+            for notice in (30, 120) for accuracy in (0.0, 0.5, 0.8, 0.95, 1.0)]
+
+
+BASELINE_POLICIES = (Policy.RECOMPUTE, Policy.EVACUATE, Policy.REPLICATE, Policy.HYBRID,
+                     Policy.INFLIGHT_REPLICATE, Policy.POOL)
+
 EXPERIMENTS = {
     "main": (exp_main, None),
     "budget": (exp_budget, (Policy.RECOMPUTE, Policy.EVACUATE)),
@@ -244,6 +295,8 @@ EXPERIMENTS = {
     "interference": (exp_interference, (Policy.RECOMPUTE, Policy.EVACUATE, Policy.HYBRID)),
     "backpressure": (exp_backpressure,
                      (Policy.RECOMPUTE, Policy.EVACUATE, Policy.REPLICATE, Policy.HYBRID)),
+    "baselines": (exp_baselines, BASELINE_POLICIES),
+    "hinted": (exp_hinted, (Policy.RECOMPUTE, Policy.EVACUATE)),
 }
 
 
@@ -257,6 +310,10 @@ def main() -> None:
                         help="measured profile JSON (kvevac.calibration); its GPU and links "
                              "replace the assumed ones in every setting")
     parser.add_argument("--link", help="override every setting's link by name")
+    parser.add_argument("--trace", type=Path,
+                        help="AgentX JSONL (semianalysisai/cc-traces-weka-062126-256k); "
+                             "replaces the synthetic workload in every setting")
+    parser.add_argument("--sessions", type=int, help="override every setting's session count")
     parser.add_argument("--out", type=Path)
     args = parser.parse_args()
     names = list(EXPERIMENTS) if args.experiment == "all" else [args.experiment]
@@ -272,13 +329,19 @@ def main() -> None:
         provenance = f"calibrated from {args.calibration.name}"
     if args.link:
         overrides["link"] = args.link
+    workload_name = "synthetic AgentX-calibrated workload"
+    if args.trace:
+        overrides["trace"] = str(args.trace)
+        workload_name = f"real sessions from {args.trace.name}"
+    if args.sessions:
+        overrides["sessions"] = args.sessions
     for name in names:
         build, policies = EXPERIMENTS[name]
         started = time.time()
         settings = [replace(s, **overrides) for s in build()]
-        results = run_settings(settings, args.seeds, policies or tuple(Policy), args.jobs)
+        results = run_settings(settings, args.seeds, policies or CORE_POLICIES, args.jobs)
         table = render(results)
-        header = (f"## {name} ({args.seeds} seeds, synthetic AgentX-calibrated workload, "
+        header = (f"## {name} ({args.seeds} seeds, {workload_name}, "
                   f"{provenance}; {time.time() - started:.0f}s)\n\n")
         print(header + table + "\n", flush=True)
         if args.out:
