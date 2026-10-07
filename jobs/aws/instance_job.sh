@@ -110,9 +110,12 @@ if [ "${SKIP_INSTALL:-0}" != 1 ]; then
     export PATH="$ROOT/bin:$HOME/.local/bin:$PATH"
   fi
   uv venv -q -p 3.12 "$ROOT/venv" || { event error "uv venv failed"; exit 1; }
-  uv pip install -q -p "$ROOT/venv/bin/python" "${VLLM_SPEC:-vllm}" \
+  # ninja: FlashInfer JIT-compiles kernels on first use and shells out to it (the
+  # first real run, vLLM 0.31.0, died with "No such file or directory: 'ninja'").
+  uv pip install -q -p "$ROOT/venv/bin/python" "${VLLM_SPEC:-vllm}" ninja \
     || { event error "vllm install failed"; exit 1; }
   PYTHON="$ROOT/venv/bin/python"
+  export PATH="$ROOT/venv/bin:$PATH"
 fi
 PYTHON="${PYTHON:-python3}"
 export PYTHONPATH="$ROOT/src"
@@ -147,7 +150,10 @@ event env "GPU $GPU_NAME"
 event vllm "starting server; model download and compile take a while"
 DEFAULT_VLLM_CMD="$PYTHON -m vllm.entrypoints.openai.api_server --model $MODEL --port 8000 \
   --max-model-len $MAX_MODEL_LEN --no-enable-prefix-caching --gpu-memory-utilization 0.90"
-VLLM_SERVER_DEV_MODE=1 bash -c "exec ${VLLM_CMD:-$DEFAULT_VLLM_CMD}" >"$ROOT/vllm.log" 2>&1 &
+# PyTorch sampling instead of FlashInfer's JIT-compiled sampler: nothing to compile at
+# startup, and sampling is not what we measure. Override with VLLM_USE_FLASHINFER_SAMPLER=1.
+VLLM_SERVER_DEV_MODE=1 VLLM_USE_FLASHINFER_SAMPLER="${VLLM_USE_FLASHINFER_SAMPLER:-0}" \
+  bash -c "exec ${VLLM_CMD:-$DEFAULT_VLLM_CMD}" >"$ROOT/vllm.log" 2>&1 &
 VLLM_PID=$!
 for i in $(seq 1 360); do
   curl -sf localhost:8000/health >/dev/null && break
