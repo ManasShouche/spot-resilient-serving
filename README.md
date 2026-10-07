@@ -32,6 +32,17 @@ at zero steady-state cost?
 
   See [docs/phase1b-results.md](docs/phase1b-results.md), including §7,
   corrections to an earlier 6-seed claim.
+- [x] **Phase 1c:** related-work baselines, value-at-risk characterization, and a
+  reuse-prediction sweep ([docs/phase1c-results.md](docs/phase1c-results.md)).
+  **Findings (simulated):**
+  - 55–63% of a node's resident KV belongs to *idle* sessions, which no
+    fault-tolerance system protects.
+  - KevlarFlow-style in-flight replication gets only −13% to −30% at about 14× the
+    egress of session replication.
+  - A pool that ignores failure domains drops to −32% under correlated waves.
+  - Perfect reuse prediction adds only 6–8 points.
+- [x] Novelty check against 2026 agent-KV and llm-d work
+  ([docs/positioning.md §7](docs/positioning.md)).
 - [x] Spot-notice harness: IMDSv2 mock and watcher on the real EC2 paths
   (`kvevac/notice/imds.py`).
 - [x] Phase 3 design against vLLM's KV tiering ([docs/phase3-design.md](docs/phase3-design.md)).
@@ -40,8 +51,11 @@ at zero steady-state cost?
   ([docs/calibration.md](docs/calibration.md)). The tooling (measurement client,
   fitting, `--calibration`) is ready and tested against fakes; it **needs GPU
   access to run**.
-- [ ] Phase 3: a vLLM implementation. An IMDS notice handler pauses admission and
-  ships session KV through the KV connector / P2P tier. Output-parity test.
+- [~] Phase 3: a vLLM prototype, written but **not yet run on a GPU**
+  (`kvevac/vllm_plugin`, [status](docs/phase3-design.md#prototype-status-october-2026)).
+  It is an out-of-tree offloading spec. Deferred/hybrid cascades keep session KV in
+  the CPU tier; on notice, the handler triggers a deadline-bounded, planner-ordered
+  flush to a secondary tier. Still to do: the GPU run and the output-parity test.
 - [ ] Phase 4: live FIS-triggered reclaims, then the write-up.
 
 ![Write-through vs hybrid vs evacuation under a replication bandwidth budget](docs/figures/backpressure.svg)
@@ -66,12 +80,15 @@ kvevac/experiments.py     Phase 1b experiments with paired 95% CIs (--calibratio
 kvevac/calibration.py     fit cost-model constants from measurements
 kvevac/measure/prefill.py Phase 2: cold-prefill TTFT + decode-rate client for vLLM
 kvevac/notice/imds.py     IMDSv2 mock + spot-notice watcher (real EC2 paths)
-kvevac/notice/handler.py  notice handler: timeline log, vLLM pause, evacuation hook
+kvevac/notice/handler.py  notice handler: timeline log, flush request, vLLM pause
+kvevac/characterize.py    value at risk per node: hot/idle KV, rebuild cost, rho
+kvevac/vllm_plugin/       Phase 3: deadline write-back for vLLM's tiered KV offload
 scripts/figures.py        SVG figures from results JSON
 ```
 
 ## What this project does not do
-No dynamic reparallelization (SpotServe). No claim to be the first to predict
+No dynamic reparallelization (SpotServe). No claim to a better reuse predictor
+(CacheScout, Continuum, CacheWise); the estimator is pluggable. No claim to be the first to predict
 preemption (Parcae, SkyNomad, hazardserve) or to exploit its correlation (SkyServe).
 No claim that KV transfer generally beats recompute (ShuntServe measured the
 opposite at short contexts).
