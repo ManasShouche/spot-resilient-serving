@@ -34,13 +34,16 @@ at zero steady-state cost?
   corrections to an earlier 6-seed claim.
 - [x] **Phase 1c:** related-work baselines, value-at-risk characterization, and a
   reuse-prediction sweep ([docs/phase1c-results.md](docs/phase1c-results.md)).
-  **Findings (simulated):**
-  - 55–63% of a node's resident KV belongs to *idle* sessions, which no
-    fault-tolerance system protects.
-  - KevlarFlow-style in-flight replication gets only −13% to −30% at about 14× the
+  Each experiment ran on both the synthetic workload and the **real AgentX trace**
+  (load-matched). **Findings (simulated):**
+  - On the real trace, 75–78% of a large node's resident KV belongs to sessions
+    with no turn running, which no in-flight fault-tolerance system protects.
+  - KevlarFlow-style in-flight replication gets only −13% to −36% at 12–14× the
     egress of session replication.
-  - A pool that ignores failure domains drops to −32% under correlated waves.
-  - Perfect reuse prediction adds only 6–8 points.
+  - Reuse prediction is second-order; on the trace, an oracle is no better than
+    recency.
+  - Correction: the synthetic result that failure-domain-blind pools are fragile
+    under correlated waves did **not** replicate on the trace.
 - [x] Novelty check against 2026 agent-KV and llm-d work
   ([docs/positioning.md §7](docs/positioning.md)).
 - [x] Spot-notice harness: IMDSv2 mock and watcher on the real EC2 paths

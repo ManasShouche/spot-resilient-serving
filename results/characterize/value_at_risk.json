@@ -3,42 +3,56 @@
   "snapshots": 1296,
   "resident_GB": {
    "mean": 501.79,
+   "p10": 465.63,
    "p50": 511.99,
    "p90": 523.52,
    "max": 584.62
   },
   "idle_share_of_GB": {
    "mean": 0.6,
+   "p10": 0.45,
    "p50": 0.62,
    "p90": 0.74,
    "max": 0.89
   },
+  "not_running_share_of_GB": {
+   "mean": 0.68,
+   "p10": 0.53,
+   "p50": 0.69,
+   "p90": 0.81,
+   "max": 0.97
+  },
   "recompute_gpu_s_at_risk": {
    "mean": 1249.39,
+   "p10": 1100.21,
    "p50": 1269.78,
    "p90": 1393.26,
    "max": 1626.22
   },
   "returning_recompute_gpu_s": {
    "mean": 807.29,
+   "p10": 555.63,
    "p50": 798.63,
    "p90": 1069.57,
    "max": 1388.04
   },
   "returning_share_of_gpu_s": {
    "mean": 0.64,
+   "p10": 0.48,
    "p50": 0.64,
    "p90": 0.8,
    "max": 0.97
   },
   "sessions_per_node": {
    "mean": 37.93,
+   "p10": 32.0,
    "p50": 38.0,
    "p90": 44.0,
    "max": 59.0
   },
   "in_flight_per_node": {
    "mean": 12.53,
+   "p10": 8.0,
    "p50": 12.0,
    "p90": 17.0,
    "max": 27.0
@@ -74,42 +88,56 @@
   "snapshots": 1296,
   "resident_GB": {
    "mean": 41.02,
+   "p10": 26.29,
    "p50": 43.16,
    "p90": 51.46,
    "max": 105.95
   },
   "idle_share_of_GB": {
    "mean": 0.57,
+   "p10": 0.0,
    "p50": 0.63,
+   "p90": 1.0,
+   "max": 1.0
+  },
+  "not_running_share_of_GB": {
+   "mean": 0.66,
+   "p10": 0.0,
+   "p50": 0.75,
    "p90": 1.0,
    "max": 1.0
   },
   "recompute_gpu_s_at_risk": {
    "mean": 97.69,
+   "p10": 48.39,
    "p50": 99.53,
    "p90": 141.36,
    "max": 349.72
   },
   "returning_recompute_gpu_s": {
    "mean": 64.51,
+   "p10": 6.5,
    "p50": 55.7,
    "p90": 129.27,
    "max": 349.72
   },
   "returning_share_of_gpu_s": {
    "mean": 0.65,
+   "p10": 0.09,
    "p50": 0.73,
    "p90": 1.0,
    "max": 1.0
   },
   "sessions_per_node": {
    "mean": 3.29,
+   "p10": 2.0,
    "p50": 3.0,
    "p90": 5.0,
    "max": 8.0
   },
   "in_flight_per_node": {
    "mean": 1.06,
+   "p10": 0.0,
    "p50": 1.0,
    "p90": 2.0,
    "max": 6.0
@@ -145,42 +173,56 @@
   "snapshots": 1296,
   "resident_GB": {
    "mean": 1250.39,
+   "p10": 1151.72,
    "p50": 1279.27,
    "p90": 1308.84,
    "max": 1465.26
   },
   "idle_share_of_GB": {
    "mean": 0.55,
+   "p10": 0.38,
    "p50": 0.55,
    "p90": 0.69,
    "max": 0.81
   },
+  "not_running_share_of_GB": {
+   "mean": 0.61,
+   "p10": 0.46,
+   "p50": 0.61,
+   "p90": 0.75,
+   "max": 0.87
+  },
   "recompute_gpu_s_at_risk": {
    "mean": 1061.4,
+   "p10": 934.05,
    "p50": 1082.02,
    "p90": 1174.36,
    "max": 1355.35
   },
   "returning_recompute_gpu_s": {
    "mean": 704.04,
+   "p10": 475.78,
    "p50": 708.87,
    "p90": 919.63,
    "max": 1179.58
   },
   "returning_share_of_gpu_s": {
    "mean": 0.66,
+   "p10": 0.5,
    "p50": 0.66,
    "p90": 0.82,
    "max": 0.97
   },
   "sessions_per_node": {
    "mean": 38.32,
+   "p10": 32.0,
    "p50": 38.0,
    "p90": 45.0,
    "max": 56.0
   },
   "in_flight_per_node": {
    "mean": 15.42,
+   "p10": 11.0,
    "p50": 15.0,
    "p90": 20.0,
    "max": 29.0

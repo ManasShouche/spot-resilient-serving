@@ -12,8 +12,9 @@ in systems check.
 > state when a node is reclaimed. Existing fault-tolerance systems (KevlarFlow, LUMEN,
 > GhostServe, ShuntServe) protect only in-flight requests, and agent-KV systems
 > (CacheScout, Continuum) protect idle sessions only against eviction. I built a
-> discrete-event simulator and found that 55–63% of a node's resident KV is idle
-> session state that none of these protect. I then framed the termination notice as a
+> discrete-event simulator and replayed 393 real Claude Code sessions. 75–78% of a
+> large node's resident KV belonged to sessions between turns, which none of these
+> protect. I then framed the termination notice as a
 > budget: a deadline-bounded knapsack that decides which sessions to evacuate, to
 > where, outside the reclaim's failure domain. In simulation, evacuation recovers
 > 44–52% of reclaim-induced recompute at a 2-minute notice, with zero steady-state
@@ -40,8 +41,12 @@ in systems check.
    - Under a shared-store bandwidth budget, write-through degrades silently (drops
      under backpressure lose exactly the bursts), while the hybrid holds.
    - KevlarFlow-style in-flight replication is the wrong unit for agents: −13% to
-     −30% at about 14× the egress ([phase1c-results.md](phase1c-results.md)).
-   - Reuse prediction is second-order: a perfect oracle adds 6–8 points.
+     −36% at 12–14× the egress ([phase1c-results.md](phase1c-results.md)).
+   - Reuse prediction is second-order: on real sessions an oracle is no better
+     than recency.
+   - Checking against the real trace overturned one synthetic finding (pool fragility)
+     and showed that equal session counts are not equal load. Both corrections are
+     published. That habit is worth a sentence in the SOP.
 4. **Engineering depth:** an AWS spot harness that injects real FIS interruptions, a
    one-command calibration runner that returns results over the serial console with
    checksums, and an out-of-tree vLLM plugin that adds deferred cascades and a
@@ -61,7 +66,7 @@ in systems check.
 ## What would most strengthen the application, cheapest first
 1. One real calibration run (Phase 2, about $2–3). It turns "assumed constants" into
    "measured on L40S".
-2. The real AgentX trace replay (`--trace`). It removes "synthetic workload".
+2. Done: the Phase 1c experiments now also run on the real AgentX trace.
 3. A two-node GPU demo of the plugin with output parity. Even one plot of returning
    session TTFT, evacuated vs. cold, is strong evidence.
 4. A 4-page workshop submission (EuroMLSys / MLSys or NeurIPS systems workshops);

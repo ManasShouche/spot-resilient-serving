@@ -101,6 +101,20 @@ def load_agentx_jsonl(path: Path, *, arrival_window_s: float, seed: int = 0,
     return sessions
 
 
+def resample_sessions(real: list[Session], n: int, *, arrival_window_s: float,
+                      seed: int = 0) -> list[Session]:
+    """`n` sessions drawn with replacement from real ones, each with a fresh id and start
+    time. Keeps the offered load comparable to a synthetic run of `n` sessions when the
+    corpus is smaller (AgentX has 393); every session's turns are real."""
+    rng = random.Random(seed)
+    out = []
+    for index in range(n):
+        source = rng.choice(real)
+        out.append(Session(f"{source.id[:12]}-{index:04d}", rng.uniform(0, arrival_window_s),
+                           source.turns))
+    return out
+
+
 def _flatten_requests(items: list[dict]) -> list[dict]:
     """Inline subagent requests; keep only requests that carry KV block hashes."""
     flat: list[dict] = []

@@ -34,7 +34,7 @@ from kvevac.profiles import GPUS, LINKS, MODELS
 from kvevac.reuse import ReuseModel
 from kvevac.sim import CORE_POLICIES, FleetConfig, Policy, correlated_reclaims, run
 from kvevac.sweep import fleet_groups, reclaims_for
-from kvevac.workload import Session, load_agentx_jsonl, synthetic_sessions
+from kvevac.workload import Session, load_agentx_jsonl, resample_sessions, synthetic_sessions
 
 # Two-sided 95% t critical values by degrees of freedom.
 _T95 = {1: 12.71, 2: 4.30, 3: 3.18, 4: 2.78, 5: 2.57, 6: 2.45, 7: 2.36, 8: 2.31, 9: 2.26,
@@ -68,18 +68,19 @@ class Setting:
     """AgentX JSONL path. None: the synthetic AgentX-calibrated generator."""
 
 
-_TRACE_CACHE: dict[tuple[str, int, int], list[Session]] = {}
+_TRACE_CACHE: dict[str, list[Session]] = {}
 
 
 def workload_for(setting: Setting, seed: int) -> list[Session]:
     if setting.trace is None:
         return synthetic_sessions(setting.sessions, arrival_window_s=7200, seed=seed)
-    key = (setting.trace, setting.sessions, seed)
-    if key not in _TRACE_CACHE:
-        # Seeds vary the synthesized session start times; the sessions themselves are real.
-        _TRACE_CACHE[key] = load_agentx_jsonl(Path(setting.trace), arrival_window_s=7200,
-                                              seed=seed, max_sessions=setting.sessions)
-    return _TRACE_CACHE[key]
+    if setting.trace not in _TRACE_CACHE:  # parsing the 569 MB corpus takes ~20 s
+        _TRACE_CACHE[setting.trace] = load_agentx_jsonl(Path(setting.trace),
+                                                        arrival_window_s=7200)
+    # Same offered load as the synthetic runs: `sessions` drawn with replacement from the
+    # real ones, fresh start times per seed. Every turn sequence is real.
+    return resample_sessions(_TRACE_CACHE[setting.trace], setting.sessions,
+                             arrival_window_s=7200, seed=seed)
 
 
 def excess_by_policy(setting: Setting, seed: int,
@@ -332,7 +333,9 @@ def main() -> None:
     workload_name = "synthetic AgentX-calibrated workload"
     if args.trace:
         overrides["trace"] = str(args.trace)
-        workload_name = f"real sessions from {args.trace.name}"
+        workload_name = (f"real AgentX sessions from {args.trace.name}, resampled with "
+                         "replacement to the setting's session count")
+        workload_for(Setting("preload", trace=str(args.trace)), 0)  # parse before forking
     if args.sessions:
         overrides["sessions"] = args.sessions
     for name in names:

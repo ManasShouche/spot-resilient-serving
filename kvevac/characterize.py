@@ -25,7 +25,7 @@ from pathlib import Path
 
 from kvevac.profiles import GPUS, LINKS, MODELS
 from kvevac.sim import FleetConfig, Policy, Simulation
-from kvevac.workload import load_agentx_jsonl, quantile, synthetic_sessions
+from kvevac.workload import load_agentx_jsonl, quantile, resample_sessions, synthetic_sessions
 
 WARMUP_S = 3600.0
 """Skip snapshots taken while the fleet is still filling up."""
@@ -73,6 +73,7 @@ def snapshots(scenario: Scenario, sessions, every_s: float) -> list[dict]:
 def summarize(rows: list[dict]) -> dict:
     def dist(values: list[float]) -> dict:
         return {"mean": round(statistics.mean(values), 2),
+                "p10": round(quantile(values, 0.1), 2),
                 "p50": round(quantile(values, 0.5), 2),
                 "p90": round(quantile(values, 0.9), 2),
                 "max": round(max(values), 2)}
@@ -80,10 +81,12 @@ def summarize(rows: list[dict]) -> dict:
     total_gb = [r["hot_GB"] + r["idle_GB"] for r in rows]
     total_s = [r["hot_recompute_s"] + r["idle_recompute_s"] for r in rows]
     idle_share = [r["idle_GB"] / t for r, t in zip(rows, total_gb, strict=True)]
+    not_running = [1 - r["running_GB"] / t for r, t in zip(rows, total_gb, strict=True)]
     out = {
         "snapshots": len(rows),
         "resident_GB": dist(total_gb),
         "idle_share_of_GB": dist(idle_share),
+        "not_running_share_of_GB": dist(not_running),
         "recompute_gpu_s_at_risk": dist(total_s),
         "returning_recompute_gpu_s": dist([r["returning_recompute_s"] for r in rows]),
         "returning_share_of_gpu_s": dist([r["returning_recompute_s"] / t if t else 0.0
@@ -105,20 +108,25 @@ def summarize(rows: list[dict]) -> dict:
 
 def render(results: dict[str, dict], workload: str) -> str:
     lines = [f"## Value at risk per spot node ({workload}; simulated, assumed constants)", "",
-             "| scenario | resident GB p50 / p90 | idle share p50 | rebuild GPU-s p50 / p90 | "
+             "| scenario | resident GB p50 / p90 | not running, p50 / p10 | idle >60 s, p50 | "
+             "rebuild GPU-s p50 / p90 | "
              "returning share p50 | sessions p50 | ρ<1 share, 25GbE W=30s / 120s |",
-             "|---|---|---|---|---|---|---|"]
+             "|---|---|---|---|---|---|---|---|"]
     for label, s in results.items():
         rho = s["rho"]
         lines.append(
             f"| {label} | {s['resident_GB']['p50']} / {s['resident_GB']['p90']} | "
+            f"{s['not_running_share_of_GB']['p50']:.0%} / "
+            f"{s['not_running_share_of_GB']['p10']:.0%} | "
             f"{s['idle_share_of_GB']['p50']:.0%} | "
             f"{s['recompute_gpu_s_at_risk']['p50']} / {s['recompute_gpu_s_at_risk']['p90']} | "
             f"{s['returning_share_of_gpu_s']['p50']:.0%} | "
             f"{s['sessions_per_node']['p50']:.0f} | "
             f"{rho['25gbe, W=30s']['share_below_1']:.0%} / "
             f"{rho['25gbe, W=120s']['share_below_1']:.0%} |")
-    lines += ["", "Hot: running, or active in the last 60 s. Returning share: the part of the "
+    lines += ["", "Not running: KV of sessions with no turn in flight (between turns or idle); "
+              "this is what in-flight fault tolerance leaves unprotected. Idle >60 s: no "
+              "activity for a minute. Returning share: the part of the "
               "rebuild cost that belongs to sessions with another turn (what an oracle would "
               "protect). ρ = W × B / resident KV; below 1, not everything fits in the notice "
               "and the planner's choices matter."]
@@ -135,16 +143,19 @@ def main() -> None:
     parser.add_argument("--trace", type=Path, help="AgentX JSONL instead of synthetic")
     parser.add_argument("--out", type=Path)
     args = parser.parse_args()
-    workload = (f"real sessions from {args.trace.name}" if args.trace
+    workload = (f"real AgentX sessions from {args.trace.name}, resampled with replacement"
+                if args.trace
                 else "synthetic AgentX-calibrated workload")
+    real = load_agentx_jsonl(args.trace, arrival_window_s=ARRIVAL_WINDOW_S) \
+        if args.trace else []
     results = {}
     for scenario in SCENARIOS:
         rows = []
         count = max(1, round(args.sessions * scenario.load_scale))
         for seed in range(args.seeds):
             if args.trace:
-                sessions = load_agentx_jsonl(args.trace, arrival_window_s=ARRIVAL_WINDOW_S,
-                                             seed=seed, max_sessions=count)
+                sessions = resample_sessions(real, count, arrival_window_s=ARRIVAL_WINDOW_S,
+                                             seed=seed)
             else:
                 sessions = synthetic_sessions(count,
                                               arrival_window_s=ARRIVAL_WINDOW_S, seed=seed)

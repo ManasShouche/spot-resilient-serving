@@ -40,3 +40,12 @@ def test_agentx_loader_flattens_subagents_and_orders_turns(tmp_path) -> None:
 
     assert [t.offset_s for t in session.turns] == [0.0, 3.0]
     assert [t.input_tokens for t in session.turns] == [1000, 2000]
+
+
+def test_resampled_sessions_keep_real_turns_with_fresh_ids() -> None:
+    from kvevac.workload import resample_sessions, synthetic_sessions
+    real = synthetic_sessions(5, arrival_window_s=100, seed=1)
+    out = resample_sessions(real, 12, arrival_window_s=500, seed=2)
+    assert len(out) == 12 and len({s.id for s in out}) == 12
+    by_turns = {s.turns: s.id for s in real}
+    assert all(s.turns in by_turns and s.id.startswith(by_turns[s.turns][:12]) for s in out)

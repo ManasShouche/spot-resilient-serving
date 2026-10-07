@@ -509,7 +509,7 @@ class Simulation:
 
     def _value_at_risk(self, now: float, node: NodeState, reason: str) -> dict:
         """What a reclaim of `node` right now would put at risk (characterization)."""
-        hot_tokens = idle_tokens = 0
+        hot_tokens = idle_tokens = running_tokens = 0
         hot_s = idle_s = expected_s = 0.0
         for session_id, tokens in node.cache.items():
             state = self.sessions[session_id]
@@ -518,6 +518,8 @@ class Simulation:
                 len(state.session.turns)
             if returns:
                 expected_s += cost
+            if session_id in node.in_flight:
+                running_tokens += tokens
             if session_id in node.in_flight or now - state.last_active < \
                     self.fleet.hot_window_s:
                 hot_tokens += tokens
@@ -528,6 +530,7 @@ class Simulation:
         for session_id, (_, context, _) in node.in_flight.items():
             if session_id not in node.cache:
                 hot_tokens += context
+                running_tokens += context
                 cost = recompute_s(context, self.gpu)
                 hot_s += cost
                 expected_s += cost
@@ -535,6 +538,7 @@ class Simulation:
             "t_s": round(now, 1), "node": node.id, "reason": reason,
             "in_flight": len(node.in_flight), "sessions": len(node.cache),
             "hot_GB": round(kv_bytes(hot_tokens, self.model) / 1e9, 3),
+            "running_GB": round(kv_bytes(running_tokens, self.model) / 1e9, 3),
             "idle_GB": round(kv_bytes(idle_tokens, self.model) / 1e9, 3),
             "hot_recompute_s": round(hot_s, 2), "idle_recompute_s": round(idle_s, 2),
             "returning_recompute_s": round(expected_s, 2),
