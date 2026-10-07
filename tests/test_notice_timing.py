@@ -48,3 +48,19 @@ def test_standalone_logger_against_imds_mock() -> None:
     assert 0.0 <= result["rebalance_lead_s"] <= 2.5
     assert 115 <= result["announced_notice_s"] <= 121
     assert result["heartbeats"] >= 2
+
+
+def test_standalone_logger_heartbeats_slowly_until_a_signal() -> None:
+    with MockIMDS() as imds:
+        proc = subprocess.Popen([sys.executable, str(LOGGER)], stdout=subprocess.PIPE,
+                                text=True, env={**os.environ, "KVEVAC_IMDS": imds.base_url})
+        time.sleep(3.5)  # no signal yet: only the startup heartbeat, the next is 60 s away
+        imds.schedule_interruption(notice_s=120, rebalance_lead_s=0.0, after_s=0.0)
+        time.sleep(3.5)  # signal seen: one heartbeat per second
+        proc.terminate()
+        out, _ = proc.communicate(timeout=10)
+    events = parse(out)
+    names = [e["event"] for e in events]
+    signal_at = min(names.index(n) for n in ("rebalance", "interruption") if n in names)
+    assert names[:signal_at].count("heartbeat") == 1
+    assert names[signal_at:].count("heartbeat") >= 3
