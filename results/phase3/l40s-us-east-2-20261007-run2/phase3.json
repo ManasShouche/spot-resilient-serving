@@ -1,0 +1,87 @@
+{
+ "model": "NousResearch/Meta-Llama-3.1-8B-Instruct",
+ "sessions": {
+  "s-long": 56000,
+  "s-short": 20000
+ },
+ "tier_write_GBps": 0.219,
+ "turn1": {
+  "s-long": {
+   "ttft_s": 9.0525,
+   "text": " patch timeout patch timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout",
+   "prompt_tokens": 57204,
+   "total_s": 10.5118
+  },
+  "s-short": {
+   "ttft_s": 2.1365,
+   "text": " timeout patch timeout timeout patch timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout",
+   "prompt_tokens": 20422,
+   "total_s": 3.301
+  }
+ },
+ "tier_before_flush": {
+  "files": 0,
+  "GB": 0.0
+ },
+ "flush": {
+  "seq": 1,
+  "started_unix": 1791400591.9607022,
+  "sessions_planned": [
+   "s-long",
+   "s-short"
+  ],
+  "complete_sessions": [
+   "s-long",
+   "s-short"
+  ],
+  "partial_sessions": {},
+  "skipped_sessions": [],
+  "keys_submitted": 4851,
+  "bytes_submitted": 10173284352,
+  "projected_finish_unix": 1791400638.5038166,
+  "already_in_tier": 0,
+  "finished_unix": 1791400641.1773558,
+  "keys_confirmed": 4851
+ },
+ "flush_wall_s": 49.39,
+ "tier_after_flush": {
+  "files": 4851,
+  "GB": 10.173
+ },
+ "restored": {
+  "s-long": {
+   "ttft_s": 19.3798,
+   "text": " timeout patch timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout",
+   "prompt_tokens": 58784,
+   "total_s": 20.8407
+  },
+  "s-short": {
+   "ttft_s": 6.6321,
+   "text": " timeout patch timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout",
+   "prompt_tokens": 22000,
+   "total_s": 7.8084
+  }
+ },
+ "cold": {
+  "s-long": {
+   "ttft_s": 9.3276,
+   "text": " timeout patch timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout",
+   "prompt_tokens": 58784,
+   "total_s": 10.7975
+  },
+  "s-short": {
+   "ttft_s": 2.3745,
+   "text": " timeout patch timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout",
+   "prompt_tokens": 22000,
+   "total_s": 3.551
+  }
+ },
+ "output_parity": {
+  "s-long": true,
+  "s-short": true
+ },
+ "ttft_speedup": {
+  "s-long": 0.48,
+  "s-short": 0.36
+ }
+}

@@ -151,7 +151,10 @@ if [ "${KVEVAC_JOB:-calibrate}" = phase3 ]; then
   # Phase 3: the vLLM plugin's first GPU test (kvevac.vllm_plugin.gpu_test). The tier
   # goes on the instance-store NVMe if there is one (DLAMIs mount it at /opt/dlami/nvme).
   TIER_BASE="$ROOT"
-  if mountpoint -q /opt/dlami/nvme 2>/dev/null; then
+  if [ "${PHASE3_TIER:-nvme}" = ram ]; then
+    mkdir -p /mnt/ram && mount -t tmpfs -o "size=${PHASE3_RAM_GB:-9}g" tmpfs /mnt/ram \
+      && TIER_BASE=/mnt/ram
+  elif mountpoint -q /opt/dlami/nvme 2>/dev/null; then
     TIER_BASE=/opt/dlami/nvme
   else
     DEV="$(lsblk -dpnP -o NAME,MOUNTPOINT,MODEL 2>/dev/null \
@@ -162,7 +165,8 @@ if [ "${KVEVAC_JOB:-calibrate}" = phase3 ]; then
   fi
   event phase3 "tier on $TIER_BASE"
   "$PYTHON" -m kvevac.vllm_plugin.gpu_test --model "$MODEL" --tier "$TIER_BASE/kvevac-tier" \
-    --out "$OUT" --logs "$ROOT" --python "$PYTHON"
+    --out "$OUT" --logs "$ROOT" --python "$PYTHON" \
+    --cpu-gb "${PHASE3_CPU_GB:-14}" --scale "${PHASE3_SCALE:-1}"
   STATUS=$?
   for f in "$ROOT"/vllm-*.log; do
     [ -f "$f" ] && tail -n 120 "$f" | cut -c1-300 >"$OUT/$(basename "$f" .log).tail.log"

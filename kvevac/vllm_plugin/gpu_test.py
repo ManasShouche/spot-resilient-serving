@@ -181,13 +181,18 @@ def main() -> None:
     parser.add_argument("--tier", type=Path, required=True)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--cpu-gb", type=float, default=14.0)
+    parser.add_argument("--scale", type=float, default=1.0,
+                        help="multiply the sessions' prompt lengths (RAM-tier runs need <1)")
     parser.add_argument("--notice-s", type=float, default=120.0)
     parser.add_argument("--python", default=sys.executable)
     parser.add_argument("--logs", type=Path, default=Path("."),
                         help="where the vLLM server logs go (keep them out of --out)")
     args = parser.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
-    result: dict = {"model": args.model, "sessions": SESSIONS}
+    global SESSIONS
+    SESSIONS = {sid: int(words * args.scale) for sid, words in SESSIONS.items()}
+    result: dict = {"model": args.model, "sessions": SESSIONS, "tier": str(args.tier),
+                    "cpu_gb": args.cpu_gb}
     report_path = args.out / "phase3.json"
 
     def save() -> None:
