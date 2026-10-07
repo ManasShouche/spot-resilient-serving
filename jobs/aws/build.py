@@ -56,14 +56,22 @@ def user_data() -> str:
     return "\n".join(parts) + "\n"
 
 
+def _gzip(data: bytes) -> bytes:
+    """Reproducible gzip: Python 3.14 writes the host OS into the header (byte 9), where
+    earlier versions wrote 255 ("unknown"). Pin it so the build is host-independent."""
+    packed = bytearray(gzip.compress(data, compresslevel=9, mtime=0))
+    packed[9] = 255
+    return bytes(packed)
+
+
 def _gz_b64(text: str) -> str:
-    packed = gzip.compress(text.encode(), compresslevel=9, mtime=0)
+    packed = _gzip(text.encode())
     return "\n".join(textwrap.wrap(base64.b64encode(packed).decode(), 76))
 
 
 def build() -> tuple[str, int]:
     data = user_data()
-    size = len(gzip.compress(data.encode(), compresslevel=9, mtime=0))
+    size = len(_gzip(data.encode()))
     # The runner prepends a few `export` lines, so leave headroom.
     if size > USER_DATA_LIMIT - 1024:
         raise SystemExit(f"gzipped user-data is {size} bytes; EC2 allows {USER_DATA_LIMIT}")
