@@ -16,7 +16,7 @@
 #
 # Tunables (kvevac-aws.sh can prepend them to user-data):
 #   MODEL, MAX_MODEL_LEN, VLLM_SPEC (pip spec, default "vllm"), KVEVAC_MAX_MIN (90),
-#   PREFILL_CONTEXTS, PREFILL_REPEATS, INTERFERENCE_REPEATS
+#   PREFILL_CONTEXTS, PREFILL_REPEATS, INTERFERENCE_REPEATS, INTERFERENCE_CONTEXT (32000)
 # Test hooks (jobs/aws/dry_run.sh; leave unset on AWS):
 #   KVEVAC_ROOT, KVEVAC_CONSOLE, KVEVAC_IMDS, KVEVAC_DRY_RUN=1 (no shutdown timer),
 #   SKIP_INSTALL=1 + PYTHON, VLLM_CMD, KVEVAC_RESEND_S
@@ -29,6 +29,7 @@ MAX_MIN="${KVEVAC_MAX_MIN:-90}"
 PREFILL_CONTEXTS="${PREFILL_CONTEXTS:-1000 4000 16000 32000 64000 96000 120000}"
 PREFILL_REPEATS="${PREFILL_REPEATS:-3}"
 INTERFERENCE_REPEATS="${INTERFERENCE_REPEATS:-5}"
+INTERFERENCE_CONTEXT="${INTERFERENCE_CONTEXT:-32000}"
 RESEND_S="${KVEVAC_RESEND_S:-120}"
 IMDS="${KVEVAC_IMDS:-http://169.254.169.254}"
 if [ -z "${KVEVAC_CONSOLE:-}" ]; then
@@ -166,7 +167,7 @@ event prefill "contexts $PREFILL_CONTEXTS x $PREFILL_REPEATS"
 for mode in host h2d; do
   event interference "mode $mode"
   "$PYTHON" -m kvevac.measure.interference --base-url http://localhost:8000 \
-    --model "$MODEL" --context 32000 --repeats "$INTERFERENCE_REPEATS" \
+    --model "$MODEL" --context "$INTERFERENCE_CONTEXT" --repeats "$INTERFERENCE_REPEATS" \
     --rates 1 2.5 10 0 --mode "$mode" --out "$OUT/interference-${mode}.json" \
     || event error "interference $mode failed"
 done

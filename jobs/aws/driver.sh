@@ -25,7 +25,7 @@
 # no spot capacity), MARKET (spot; "on-demand" for the calibration measurements only,
 # since FIS cannot interrupt an on-demand instance; ON_DEMAND_PRICE, default 1.861 $/h,
 # is used for the cost line), and for the instance: MODEL, MAX_MODEL_LEN, VLLM_SPEC,
-# PREFILL_CONTEXTS, PREFILL_REPEATS, INTERFERENCE_REPEATS.
+# PREFILL_CONTEXTS, PREFILL_REPEATS, INTERFERENCE_REPEATS, INTERFERENCE_CONTEXT.
 set -euo pipefail
 
 INSTANCE_TYPE="${INSTANCE_TYPE:-g6e.xlarge}"
@@ -42,7 +42,7 @@ RUNS="${KVEVAC_RUNS:-$HOME/kvevac-runs}"
 AMI_PARAM="${AMI_PARAM:-/aws/service/deeplearning/ami/x86_64/base-oss-nvidia-driver-gpu-ubuntu-22.04/latest/ami-id}"
 FIS_ROLE="${FIS_ROLE:-kvevac-fis}"
 TAG=kvevac-aws
-PASS_THROUGH="MODEL MAX_MODEL_LEN VLLM_SPEC PREFILL_CONTEXTS PREFILL_REPEATS INTERFERENCE_REPEATS KVEVAC_RESEND_S"
+PASS_THROUGH="MODEL MAX_MODEL_LEN VLLM_SPEC PREFILL_CONTEXTS PREFILL_REPEATS INTERFERENCE_REPEATS INTERFERENCE_CONTEXT KVEVAC_RESEND_S"
 
 say() { printf '[%s] %s\n' "$(date -u +%H:%M:%S)" "$*"; }
 die() { say "ERROR: $*"; exit 1; }

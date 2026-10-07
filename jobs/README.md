@@ -84,7 +84,12 @@ until a launch succeeds), `MARKET` (`spot`; `on-demand` runs the calibration
 measurements only, since FIS cannot interrupt an on-demand instance, and costs
 `ON_DEMAND_PRICE`=1.861 $/h); passed to the instance: `MODEL`, `MAX_MODEL_LEN`,
 `VLLM_SPEC` (e.g. `vllm==0.11.0` to pin), `PREFILL_CONTEXTS`, `PREFILL_REPEATS`,
-`INTERFERENCE_REPEATS`.
+`INTERFERENCE_REPEATS`, `INTERFERENCE_CONTEXT` (32000).
+
+On a 24 GB GPU (L4: `g6.xlarge`/`g6.2xlarge`; A10G: `g5.xlarge`) an 8B model leaves
+room for about 25k tokens of KV, so shorten everything:
+`INSTANCE_TYPE=g6.xlarge MAX_MODEL_LEN=24576 PREFILL_CONTEXTS="1000 4000 8000 16000 22000"
+INTERFERENCE_CONTEXT=16000`. The fit then covers contexts up to 22k only.
 
 ### If something goes wrong
 - `bash kvevac-aws.sh cleanup` terminates every `project=kvevac-aws` instance and
