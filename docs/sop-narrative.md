@@ -19,8 +19,9 @@ in systems check.
 > where, outside the reclaim's failure domain. In simulation, evacuation recovers
 > 44–52% of reclaim-induced recompute at a 2-minute notice, with zero steady-state
 > cost. At equal memory it beats continuous replication, which ends up worse than
-> doing nothing. I am now validating the cost model on AWS spot GPUs and prototyping
-> the policy inside vLLM's tiered KV offloading.
+> doing nothing. I calibrated the cost model on a real L40S, where the ranking held and receiver-side
+> interference measured 0–3%, and I am prototyping the policy inside vLLM's tiered
+> KV offloading.
 
 ## The story, in the order an SOP should tell it
 
@@ -64,8 +65,9 @@ in systems check.
 - "Deployed" or "production" for the vLLM plugin until it has run on a GPU.
 
 ## What would most strengthen the application, cheapest first
-1. One real calibration run (Phase 2, about $2–3). It turns "assumed constants" into
-   "measured on L40S".
+1. Done: the cost model is calibrated on a real L40S
+   ([phase2-results.md](phase2-results.md)), and receiver interference is measured
+   at 0–3%. Next: a spot run for FIS notice timing.
 2. Done: the Phase 1c experiments now also run on the real AgentX trace.
 3. A two-node GPU demo of the plugin with output parity. Even one plot of returning
    session TTFT, evacuated vs. cold, is strong evidence.

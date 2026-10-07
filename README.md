@@ -50,10 +50,12 @@ at zero steady-state cost?
   (`kvevac/notice/imds.py`).
 - [x] Phase 3 design against vLLM's KV tiering ([docs/phase3-design.md](docs/phase3-design.md)).
 - [ ] Real AgentX trace replay (blocked on data access from this environment).
-- [ ] Phase 2: calibrate the cost model on real GPUs and links
-  ([docs/calibration.md](docs/calibration.md)). The tooling (measurement client,
-  fitting, `--calibration`) is ready and tested against fakes; it **needs GPU
-  access to run**.
+- [x] **Phase 2 (first run):** measured on a real L40S, on demand in us-east-2
+  ([docs/phase2-results.md](docs/phase2-results.md)). Measured prefill is 16k tok/s
+  (assumed 10k), the knee is 20.5k tokens, and decode is 46.7 tok/s.
+  Receiver-side interference from incoming KV is **0–3%**. The simulator's ranking
+  holds with measured constants. Not yet measured: FIS notice timing (needs spot
+  capacity) and NIC/store bandwidth.
 - [~] Phase 3: a vLLM prototype, written but **not yet run on a GPU**
   (`kvevac/vllm_plugin`, [status](docs/phase3-design.md#prototype-status-october-2026)).
   It is an out-of-tree offloading spec. Deferred/hybrid cascades keep session KV in
