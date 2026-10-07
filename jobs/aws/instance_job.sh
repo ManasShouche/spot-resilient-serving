@@ -147,6 +147,32 @@ json.dump(info, open(out, "w"), indent=1)
 PY
 event env "GPU $GPU_NAME"
 
+if [ "${KVEVAC_JOB:-calibrate}" = phase3 ]; then
+  # Phase 3: the vLLM plugin's first GPU test (kvevac.vllm_plugin.gpu_test). The tier
+  # goes on the instance-store NVMe if there is one (DLAMIs mount it at /opt/dlami/nvme).
+  TIER_BASE="$ROOT"
+  if mountpoint -q /opt/dlami/nvme 2>/dev/null; then
+    TIER_BASE=/opt/dlami/nvme
+  else
+    DEV="$(lsblk -dpnP -o NAME,MOUNTPOINT,MODEL 2>/dev/null \
+      | grep 'Instance Storage' | grep 'MOUNTPOINT=""' | head -1 | sed 's/NAME="\([^"]*\)".*/\1/')"
+    if [ -n "$DEV" ] && mkfs.ext4 -q -F "$DEV" && mkdir -p /mnt/nvme && mount "$DEV" /mnt/nvme; then
+      TIER_BASE=/mnt/nvme
+    fi
+  fi
+  event phase3 "tier on $TIER_BASE"
+  "$PYTHON" -m kvevac.vllm_plugin.gpu_test --model "$MODEL" --tier "$TIER_BASE/kvevac-tier" \
+    --out "$OUT" --logs "$ROOT" --python "$PYTHON"
+  STATUS=$?
+  for f in "$ROOT"/vllm-*.log; do
+    [ -f "$f" ] && tail -n 120 "$f" | cut -c1-300 >"$OUT/$(basename "$f" .log).tail.log"
+  done
+  rm -f "$OUT/flush.json"
+  [ "$STATUS" = 0 ] || { event error "phase3 test failed"; exit 1; }
+  event "done" "phase3 test complete"
+  exit 0
+fi
+
 event vllm "starting server; model download and compile take a while"
 DEFAULT_VLLM_CMD="$PYTHON -m vllm.entrypoints.openai.api_server --model $MODEL --port 8000 \
   --max-model-len $MAX_MODEL_LEN --no-enable-prefix-caching --gpu-memory-utilization 0.90"
