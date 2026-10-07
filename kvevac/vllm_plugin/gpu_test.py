@@ -38,6 +38,7 @@ WORDS = ("agent tool call result file patch test build error fix commit review d
 SESSIONS = {"s-long": 56_000, "s-short": 20_000}
 """Turn-1 prompt words per session (about 1-1.2 tokens per word with Llama-3)."""
 MAX_MODEL_LEN = 98_304
+SHM = "/dev/shm"
 TURN2_SUFFIX_WORDS = 1_500
 OUTPUT_TOKENS = 48
 
@@ -136,6 +137,7 @@ class Server:
         self.name, self.port = name, port
         self.log_path = Path(args.logs) / f"vllm-{name}.log"
         log(f"starting {name} ({mode}) on :{port}")
+        self.shm_before = set(os.listdir(SHM)) if os.path.isdir(SHM) else set()
         self.proc = subprocess.Popen(cmd, env=env, stdout=self.log_path.open("w"),
                                      stderr=subprocess.STDOUT, start_new_session=True)
         self.wait_healthy()
@@ -161,6 +163,15 @@ class Server:
             pass
         self.proc.wait()
         time.sleep(5)  # let the GPU memory be released
+        # A SIGKILLed vLLM leaves its CPU-tier shared region in /dev/shm (14 GB here),
+        # and the next process cannot allocate its own. On a real reclaim the machine
+        # is gone; on this single-node stand-in, remove what the dead process left.
+        if os.path.isdir(SHM):
+            for name in set(os.listdir(SHM)) - self.shm_before:
+                try:
+                    os.unlink(os.path.join(SHM, name))
+                except OSError:
+                    pass
 
 
 def main() -> None:
