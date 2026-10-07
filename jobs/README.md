@@ -78,7 +78,11 @@ and attach it in the project thread.
 ### Settings
 Environment variables, e.g. `MAX_MIN=60 bash kvevac-aws.sh`: `INSTANCE_TYPE`
 (g6e.xlarge), `MAX_MIN` (90, the self-terminate timer), `ROOT_GB` (150), `SUBNET_ID`,
-`POLL_S` (15), `SKIP_FIS=1`; passed to the instance: `MODEL`, `MAX_MODEL_LEN`,
+`POLL_S` (15), `SKIP_FIS=1`, `RETRY_MIN` (0; keep retrying every zone for this many
+minutes when none has capacity, every `RETRY_EVERY_S`=300 s; nothing is billed
+until a launch succeeds), `MARKET` (`spot`; `on-demand` runs the calibration
+measurements only, since FIS cannot interrupt an on-demand instance, and costs
+`ON_DEMAND_PRICE`=1.861 $/h); passed to the instance: `MODEL`, `MAX_MODEL_LEN`,
 `VLLM_SPEC` (e.g. `vllm==0.11.0` to pin), `PREFILL_CONTEXTS`, `PREFILL_REPEATS`,
 `INTERFERENCE_REPEATS`.
 
@@ -87,7 +91,14 @@ Environment variables, e.g. `MAX_MIN=60 bash kvevac-aws.sh`: `INSTANCE_TYPE`
   deletes leftover FIS templates. Run it if you are unsure; it is safe to repeat.
 - "spot vCPU quota too low": request an increase for *All G and VT Spot Instance
   Requests* in Service Quotas.
-- "no zone had spot capacity": try again later or another region.
+- "no zone had spot capacity": g6e spot capacity is often exhausted region-wide (on
+  7 Oct 2026 us-east-1 refused it in all four zones, with spot priced at about the
+  on-demand rate). Check first with
+  `aws ec2 get-spot-placement-scores --instance-types g6e.xlarge --target-capacity 1
+  --region-names us-east-1 us-east-2 us-west-2` (1 = unlikely, 10 = likely). Then
+  either wait with `RETRY_MIN=120`, try a region where you have G quota
+  (`AWS_REGION=us-east-2`), or run the measurements on demand with `MARKET=on-demand`
+  and time the FIS notice in a later spot run.
 - The results tarball always includes `job.tail.log` and `vllm.tail.log`, also when
   the job failed, so the cause is visible.
 

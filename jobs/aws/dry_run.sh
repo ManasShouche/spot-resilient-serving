@@ -64,13 +64,25 @@ bash "$ROOT/jobs/aws/kvevac-aws.sh" resume | tee -a "$TMP/runner.log"
 
 RUN="$TMP/runs/$(readlink "$TMP/runs/latest")"
 fail() { echo "DRY RUN FAILED: $*"; exit 1; }
+# MARKET=on-demand (and FAKE_AWS_FULL_CALLS / RETRY_MIN) exercise the fallback paths;
+# an on-demand run has no FIS notice to time.
+MARKET="${MARKET:-spot}"
 for f in results/prefill.json results/fit.json results/env.json results/interference-host.json \
-    results/interference-h2d.json results/job.tail.log notice.json; do
+    results/interference-h2d.json results/job.tail.log; do
   [ -s "$RUN/$f" ] || fail "missing $f"
 done
 [ "$(cat "$RUN/results/exit_status")" = 0 ] || fail "instance job exit status $(cat "$RUN/results/exit_status")"
-grep -q "no spot capacity in us-east-1a" "$TMP/runner.log" || fail "no zone fallback"
-grep -Eq '"announced_notice_s": (1[89]|2[01])' "$RUN/notice.json" || fail "bad notice timing: $(cat "$RUN/notice.json")"
+grep -q "no $MARKET capacity in us-east-1a" "$TMP/runner.log" || fail "no zone fallback"
+if [ "${FAKE_AWS_FULL_CALLS:-0}" -gt 0 ]; then
+  grep -q "retrying in" "$TMP/runner.log" || fail "no retry after a full pass"
+fi
+if [ "$MARKET" = spot ]; then
+  [ -s "$RUN/notice.json" ] || fail "missing notice.json"
+  grep -Eq '"announced_notice_s": (1[89]|2[01])' "$RUN/notice.json" \
+    || fail "bad notice timing: $(cat "$RUN/notice.json")"
+else
+  grep -q "skipping the FIS spot interruption" "$TMP/runner.log" || fail "FIS not skipped"
+fi
 [ ! -f "$TMP/state/fis-template.json" ] || fail "FIS template not deleted"
 [ "$("$PY" "$ROOT/jobs/aws/fake_aws.py" ec2 describe-instances --query \
   'Reservations[0].Instances[0].State.Name' --output text)" = terminated ] || fail "instance alive"
