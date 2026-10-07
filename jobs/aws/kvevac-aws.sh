@@ -21,14 +21,22 @@
 #
 # Settings (environment variables): INSTANCE_TYPE (g6e.xlarge), MAX_MIN (90), ROOT_GB
 # (150), SUBNET_ID (default: the default VPC's subnets, cheapest zone first), POLL_S (15),
-# SKIP_FIS=1, and for the instance: MODEL, MAX_MODEL_LEN, VLLM_SPEC, PREFILL_CONTEXTS,
-# PREFILL_REPEATS, INTERFERENCE_REPEATS.
+# SKIP_FIS=1, RETRY_MIN (0: keep retrying every zone for this many minutes when there is
+# no spot capacity), MARKET (spot; "on-demand" for the calibration measurements only,
+# since FIS cannot interrupt an on-demand instance; ON_DEMAND_PRICE, default 1.861 $/h,
+# is used for the cost line), and for the instance: MODEL, MAX_MODEL_LEN, VLLM_SPEC,
+# PREFILL_CONTEXTS, PREFILL_REPEATS, INTERFERENCE_REPEATS.
 set -euo pipefail
 
 INSTANCE_TYPE="${INSTANCE_TYPE:-g6e.xlarge}"
 MAX_MIN="${MAX_MIN:-90}"
 ROOT_GB="${ROOT_GB:-150}"
 POLL_S="${POLL_S:-15}"
+RETRY_MIN="${RETRY_MIN:-0}"
+RETRY_EVERY_S="${RETRY_EVERY_S:-300}"
+MARKET="${MARKET:-spot}"
+ON_DEMAND_PRICE="${ON_DEMAND_PRICE:-1.861}"
+case "$MARKET" in spot|on-demand) ;; *) echo "MARKET must be spot or on-demand"; exit 2 ;; esac
 NOTICE_WAIT_S="${NOTICE_WAIT_S:-420}"
 RUNS="${KVEVAC_RUNS:-$HOME/kvevac-runs}"
 AMI_PARAM="${AMI_PARAM:-/aws/service/deeplearning/ami/x86_64/base-oss-nvidia-driver-gpu-ubuntu-22.04/latest/ami-id}"
@@ -503,8 +511,42 @@ candidate_subnets() {  # lines "price az subnet", cheapest first, zones offering
   done | sort -n
 }
 
+try_zones() {  # try_zones AMI ROOTDEV CANDIDATES: one pass over the zones; 0 if launched
+  local ami="$1" rootdev="$2" candidates="$3" err market=() price
+  if [ "$MARKET" = spot ]; then
+    market=(--instance-market-options '{"MarketType":"spot","SpotOptions":{"SpotInstanceType":"one-time","InstanceInterruptionBehavior":"terminate"}}')
+  fi
+  while read -r price az subnet; do
+    [ "$MARKET" = spot ] || price="$ON_DEMAND_PRICE"
+    say "requesting $([ "$MARKET" = spot ] && echo a || echo an) $MARKET $INSTANCE_TYPE in $az (\$$price/h)"
+    if IID="$(aws ec2 run-instances --instance-type "$INSTANCE_TYPE" --image-id "$ami" \
+        --subnet-id "$subnet" --count 1 ${market[@]+"${market[@]}"} \
+        --instance-initiated-shutdown-behavior terminate \
+        --metadata-options HttpTokens=required,HttpEndpoint=enabled \
+        --block-device-mappings "[{\"DeviceName\":\"$rootdev\",\"Ebs\":{\"VolumeSize\":$ROOT_GB,\"VolumeType\":\"gp3\",\"DeleteOnTermination\":true}}]" \
+        --user-data "fileb://$RUN_DIR/user-data.gz" \
+        --tag-specifications "ResourceType=instance,Tags=[{Key=project,Value=$TAG},{Key=Name,Value=kvevac-$STAMP}]" \
+          "ResourceType=volume,Tags=[{Key=project,Value=$TAG}]" \
+        --query 'Instances[0].InstanceId' --output text 2>"$RUN_DIR/launch.err")"; then
+      save IID "$IID"; save AZ "$az"; save SPOT_PRICE "$price"; save LAUNCHED_AT "$(now)"
+      save MARKET "$MARKET"
+      return 0
+    fi
+    IID=""
+    err="$(cat "$RUN_DIR/launch.err")"
+    case "$err" in
+      *InsufficientInstanceCapacity*|*capacity-not-available*|*SpotMaxPriceTooLow*|*Unsupported*)
+        say "no $MARKET capacity in $az; trying the next zone" ;;
+      *MaxSpotInstanceCountExceeded*|*VcpuLimitExceeded*)
+        die "$MARKET vCPU quota too low for $INSTANCE_TYPE: $err" ;;
+      *) die "run-instances failed: $err" ;;
+    esac
+  done <<<"$candidates"
+  return 1
+}
+
 launch() {
-  local candidates err rootdev snapshot_gb ami
+  local candidates rootdev snapshot_gb ami
   ACCOUNT="$(aws sts get-caller-identity --query Account --output text)" \
     || die "the AWS CLI has no working credentials (run this in AWS CloudShell)"
   save ACCOUNT "$ACCOUNT"
@@ -527,31 +569,16 @@ launch() {
   make_user_data
   candidates="$(candidate_subnets)"
   [ -n "$candidates" ] || die "no default-VPC subnet in a zone that offers $INSTANCE_TYPE; set SUBNET_ID"
-  while read -r price az subnet; do
-    say "requesting a spot $INSTANCE_TYPE in $az (spot price \$$price/h)"
-    if IID="$(aws ec2 run-instances --instance-type "$INSTANCE_TYPE" --image-id "$ami" \
-        --subnet-id "$subnet" --count 1 \
-        --instance-market-options '{"MarketType":"spot","SpotOptions":{"SpotInstanceType":"one-time","InstanceInterruptionBehavior":"terminate"}}' \
-        --instance-initiated-shutdown-behavior terminate \
-        --metadata-options HttpTokens=required,HttpEndpoint=enabled \
-        --block-device-mappings "[{\"DeviceName\":\"$rootdev\",\"Ebs\":{\"VolumeSize\":$ROOT_GB,\"VolumeType\":\"gp3\",\"DeleteOnTermination\":true}}]" \
-        --user-data "fileb://$RUN_DIR/user-data.gz" \
-        --tag-specifications "ResourceType=instance,Tags=[{Key=project,Value=$TAG},{Key=Name,Value=kvevac-$STAMP}]" \
-          "ResourceType=volume,Tags=[{Key=project,Value=$TAG}]" \
-        --query 'Instances[0].InstanceId' --output text 2>"$RUN_DIR/launch.err")"; then
-      save IID "$IID"; save AZ "$az"; save SPOT_PRICE "$price"; save LAUNCHED_AT "$(now)"
-      break
+  local give_up=$(($(now) + RETRY_MIN * 60))
+  while :; do
+    try_zones "$ami" "$rootdev" "$candidates" && break
+    if [ "$(now)" -ge "$give_up" ]; then
+      die "no zone had $MARKET capacity for $INSTANCE_TYPE; try again later (or RETRY_MIN=120)"
     fi
-    err="$(cat "$RUN_DIR/launch.err")"
-    case "$err" in
-      *InsufficientInstanceCapacity*|*capacity-not-available*|*SpotMaxPriceTooLow*|*Unsupported*)
-        say "no spot capacity in $az; trying the next zone" ;;
-      *MaxSpotInstanceCountExceeded*|*VcpuLimitExceeded*)
-        die "spot vCPU quota too low for $INSTANCE_TYPE: $err" ;;
-      *) die "run-instances failed: $err" ;;
-    esac
-  done <<<"$candidates"
-  [ -n "${IID:-}" ] || die "no zone had spot capacity for $INSTANCE_TYPE; try again later"
+    say "no $MARKET capacity anywhere; retrying in ${RETRY_EVERY_S}s" \
+      "(until $(date -u -r "$give_up" +%H:%M:%S 2>/dev/null || date -u -d "@$give_up" +%H:%M:%S) UTC)"
+    sleep "$RETRY_EVERY_S"
+  done
   say "launched $IID; waiting for it to start"
   aws ec2 wait instance-running --instance-ids "$IID"
 }
@@ -790,6 +817,10 @@ say "now and then; if the session is lost, the instance still powers off after $
 [ -n "${IID:-}" ] || launch
 if [ "${RESULTS_OK:-0}" != 1 ]; then
   collect_results || true
+fi
+if [ "$MARKET" != spot ] && [ "${SKIP_FIS:-0}" != 1 ]; then
+  say "on-demand instance: skipping the FIS spot interruption (it only works on spot)"
+  SKIP_FIS=1
 fi
 if [ "${SKIP_FIS:-0}" != 1 ] && [ -z "${EXPERIMENT_ID:-}" ] && [ "$(instance_state)" = running ]; then
   interrupt && follow_notice

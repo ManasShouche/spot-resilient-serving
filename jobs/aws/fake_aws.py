@@ -11,7 +11,9 @@ server kills the instance when the announced time arrives.
 is formatted like the CLI does for the shapes the runner queries.
 
 Environment: FAKE_AWS_STATE (state directory, required), FAKE_AWS_NO_CAPACITY (zone that
-answers InsufficientInstanceCapacity), FAKE_AWS_NOTICE_S (notice length, default 20).
+answers InsufficientInstanceCapacity), FAKE_AWS_FULL_CALLS (the first N run-instances
+calls fail in every zone, to exercise RETRY_MIN), MARKET (on-demand: expect no spot
+market options), FAKE_AWS_NOTICE_S (notice length, default 20).
 """
 
 from __future__ import annotations
@@ -89,15 +91,24 @@ def terminate() -> None:
 
 
 def run_instances(opts: dict[str, list[str]]) -> dict:
-    market = json.loads(_one(opts, "instance-market-options"))
-    assert market["MarketType"] == "spot", market
-    assert market["SpotOptions"]["SpotInstanceType"] == "one-time", market
+    if os.environ.get("MARKET") == "on-demand":
+        assert "instance-market-options" not in opts, "on-demand must not ask for spot"
+    else:
+        market = json.loads(_one(opts, "instance-market-options"))
+        assert market["MarketType"] == "spot", market
+        assert market["SpotOptions"]["SpotInstanceType"] == "one-time", market
     assert _one(opts, "instance-initiated-shutdown-behavior") == "terminate"
     assert "HttpTokens=required" in _one(opts, "metadata-options")
     devices = json.loads(_one(opts, "block-device-mappings"))
     assert devices[0]["Ebs"]["DeleteOnTermination"] is True, devices
     subnet = _one(opts, "subnet-id")
     zone = {"subnet-a": "us-east-1a", "subnet-b": "us-east-1b"}[subnet]
+    calls = STATE / "run_instances_calls"
+    count = int(calls.read_text()) + 1 if calls.exists() else 1
+    calls.write_text(str(count))
+    if count <= int(os.environ.get("FAKE_AWS_FULL_CALLS", "0")):
+        raise AwsError("InsufficientInstanceCapacity",
+                       f"There is no capacity available in {zone} (call {count})")
     if zone == os.environ.get("FAKE_AWS_NO_CAPACITY"):
         raise AwsError("InsufficientInstanceCapacity",
                        f"There is no Spot capacity available in {zone}")
