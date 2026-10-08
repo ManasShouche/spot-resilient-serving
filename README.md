@@ -14,6 +14,8 @@ at zero steady-state cost?
 - [x] Step 0: upstream reconnaissance at a pinned vLLM commit
   ([docs/step0-recon.md](docs/step0-recon.md)).
 - [x] SOTA sweep and reframing ([docs/sota-2026.md](docs/sota-2026.md)).
+- [x] Positioning check against primary sources, with corrections and the
+  experiments that would make this paper-worthy ([docs/positioning.md](docs/positioning.md)).
 - [x] **Phase 1 (this commit):** cost model, deadline-bounded evacuation planner,
   agent-session workload generator, discrete-event simulator, regime sweep
   ([docs/simulator.md](docs/simulator.md)). Results are **simulated with assumed
