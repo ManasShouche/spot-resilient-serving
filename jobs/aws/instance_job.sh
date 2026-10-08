@@ -159,7 +159,18 @@ if [ "${KVEVAC_JOB:-calibrate}" = phase3 ]; then
   if [ "${PHASE3_TIER:-nvme}" = peer ]; then
     # The tier is a peer's RAM over NFS (jobs/aws/peer_node.sh): evacuation and
     # restore both cross the network, like a surviving node's DRAM tier.
-    command -v mount.nfs >/dev/null || apt-get install -y -qq nfs-common >/dev/null 2>&1
+    # The DLAMI has no NFS client. apt may be locked by boot-time unattended upgrades,
+    # so wait for the lock (the first two-node run, 8 Oct, failed silently here).
+    if [ ! -x /sbin/mount.nfs ]; then
+      export DEBIAN_FRONTEND=noninteractive
+      for _ in 1 2 3; do
+        apt-get -o DPkg::Lock::Timeout=300 update -qq \
+          && apt-get -o DPkg::Lock::Timeout=300 install -y -qq nfs-common && break
+        sleep 15
+      done
+      [ -x /sbin/mount.nfs ] || { event error "nfs-common install failed"; exit 1; }
+    fi
+    event phase3 "nfs client ready; mounting ${PEER_IP}"
     mkdir -p /mnt/peer
     for _ in $(seq 1 60); do
       mount -t nfs -o vers=4.2,nconnect=8,rsize=1048576,wsize=1048576,hard \
