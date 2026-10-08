@@ -1,0 +1,88 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "LaunchOnlyG6eXlarge",
+      "Effect": "Allow",
+      "Action": "ec2:RunInstances",
+      "Resource": "arn:aws:ec2:*:*:instance/*",
+      "Condition": {"StringEquals": {"ec2:InstanceType": "g6e.xlarge"}}
+    },
+    {
+      "Sid": "LaunchSupportingResources",
+      "Effect": "Allow",
+      "Action": "ec2:RunInstances",
+      "Resource": [
+        "arn:aws:ec2:*::image/*",
+        "arn:aws:ec2:*:*:subnet/*",
+        "arn:aws:ec2:*:*:network-interface/*",
+        "arn:aws:ec2:*:*:security-group/*",
+        "arn:aws:ec2:*:*:volume/*"
+      ]
+    },
+    {
+      "Sid": "TagAtLaunch",
+      "Effect": "Allow",
+      "Action": "ec2:CreateTags",
+      "Resource": ["arn:aws:ec2:*:*:instance/*", "arn:aws:ec2:*:*:volume/*",
+                   "arn:aws:ec2:*:*:spot-instances-request/*"],
+      "Condition": {"StringEquals": {"ec2:CreateAction": "RunInstances"}}
+    },
+    {
+      "Sid": "TerminateOnlyKvevacInstances",
+      "Effect": "Allow",
+      "Action": "ec2:TerminateInstances",
+      "Resource": "arn:aws:ec2:*:*:instance/*",
+      "Condition": {"StringEquals": {"aws:ResourceTag/project": "kvevac-aws"}}
+    },
+    {
+      "Sid": "ReadOnlyEc2",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:DescribeInstances",
+        "ec2:DescribeImages",
+        "ec2:DescribeSubnets",
+        "ec2:DescribeInstanceTypeOfferings",
+        "ec2:DescribeSpotPriceHistory",
+        "ec2:GetConsoleOutput",
+        "ssm:GetParameter",
+        "servicequotas:GetServiceQuota"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "FisRole",
+      "Effect": "Allow",
+      "Action": ["iam:GetRole", "iam:CreateRole", "iam:AttachRolePolicy", "iam:TagRole"],
+      "Resource": "arn:aws:iam::*:role/kvevac-fis"
+    },
+    {
+      "Sid": "PassFisRoleToFis",
+      "Effect": "Allow",
+      "Action": "iam:PassRole",
+      "Resource": "arn:aws:iam::*:role/kvevac-fis",
+      "Condition": {"StringEquals": {"iam:PassedToService": "fis.amazonaws.com"}}
+    },
+    {
+      "Sid": "ServiceLinkedRolesForSpotAndFis",
+      "Effect": "Allow",
+      "Action": "iam:CreateServiceLinkedRole",
+      "Resource": "*",
+      "Condition": {"StringEquals": {"iam:AWSServiceName": ["spot.amazonaws.com",
+                                                            "fis.amazonaws.com"]}}
+    },
+    {
+      "Sid": "Fis",
+      "Effect": "Allow",
+      "Action": [
+        "fis:CreateExperimentTemplate",
+        "fis:DeleteExperimentTemplate",
+        "fis:ListExperimentTemplates",
+        "fis:StartExperiment",
+        "fis:GetExperiment",
+        "fis:TagResource"
+      ],
+      "Resource": "*"
+    }
+  ]
+}

@@ -6,7 +6,7 @@ requires-python = ">=3.12"
 dependencies = []
 
 [project.optional-dependencies]
-dev = ["pytest>=8.3,<9", "ruff>=0.9,<1"]
+dev = ["pytest>=8.3,<9", "ruff>=0.9,<1", "jmespath>=1,<2"]  # jmespath: jobs/aws/dry_run.sh
 
 [build-system]
 requires = ["setuptools>=75"]

@@ -16,6 +16,7 @@ import urllib.request
 from datetime import datetime, timezone
 
 IMDS = os.environ.get("KVEVAC_IMDS", "http://169.254.169.254")  # override only for tests
+CONSOLE = os.environ.get("KVEVAC_CONSOLE", "/dev/console")  # serial console, or a file in tests
 PATHS = {"rebalance": "/latest/meta-data/events/recommendations/rebalance",
          "interruption": "/latest/meta-data/spot/instance-action"}
 POLL_S = 1.0
@@ -27,7 +28,7 @@ def emit(event, **fields):
     line = "KVEVAC " + json.dumps({"event": event,
                                    "at": datetime.now(timezone.utc).isoformat(), **fields})
     print(line, flush=True)
-    for target in ("/dev/console", "/var/log/kvevac-notice.log"):
+    for target in (CONSOLE, "/var/log/kvevac-notice.log"):
         try:
             with open(target, "a") as handle:
                 handle.write(line + "\n")
