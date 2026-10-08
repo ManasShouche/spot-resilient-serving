@@ -151,7 +151,24 @@ if [ "${KVEVAC_JOB:-calibrate}" = phase3 ]; then
   # Phase 3: the vLLM plugin's first GPU test (kvevac.vllm_plugin.gpu_test). The tier
   # goes on the instance-store NVMe if there is one (DLAMIs mount it at /opt/dlami/nvme).
   TIER_BASE="$ROOT"
-  if [ "${PHASE3_TIER:-nvme}" = ram ]; then
+  # Memory on the console every 30 s, so a run that dies (run 3, 7 Oct) says why.
+  ( while true; do
+      event mem "$(free -g | awk '/Mem/{print "used " $3 "G avail " $7 "G"}') shm $(df -h /dev/shm | awk 'NR==2{print $3}')"
+      sleep 30
+    done ) &
+  if [ "${PHASE3_TIER:-nvme}" = peer ]; then
+    # The tier is a peer's RAM over NFS (jobs/aws/peer_node.sh): evacuation and
+    # restore both cross the network, like a surviving node's DRAM tier.
+    command -v mount.nfs >/dev/null || apt-get install -y -qq nfs-common >/dev/null 2>&1
+    mkdir -p /mnt/peer
+    for _ in $(seq 1 60); do
+      mount -t nfs -o vers=4.2,nconnect=8,rsize=1048576,wsize=1048576,hard \
+        "${PEER_IP:?PEER_IP unset}:/export" /mnt/peer && break
+      sleep 10
+    done
+    mountpoint -q /mnt/peer || { event error "could not mount ${PEER_IP}:/export"; exit 1; }
+    TIER_BASE=/mnt/peer
+  elif [ "${PHASE3_TIER:-nvme}" = ram ]; then
     mkdir -p /mnt/ram && mount -t tmpfs -o "size=${PHASE3_RAM_GB:-9}g" tmpfs /mnt/ram \
       && TIER_BASE=/mnt/ram
   elif mountpoint -q /opt/dlami/nvme 2>/dev/null; then
@@ -166,7 +183,7 @@ if [ "${KVEVAC_JOB:-calibrate}" = phase3 ]; then
   event phase3 "tier on $TIER_BASE"
   "$PYTHON" -m kvevac.vllm_plugin.gpu_test --model "$MODEL" --tier "$TIER_BASE/kvevac-tier" \
     --out "$OUT" --logs "$ROOT" --python "$PYTHON" \
-    --cpu-gb "${PHASE3_CPU_GB:-14}" --scale "${PHASE3_SCALE:-1}"
+    --cpu-gb "${PHASE3_CPU_GB:-14}" --scale "${PHASE3_SCALE:-1}" --cold-tier "$ROOT/cold-tier"
   STATUS=$?
   for f in "$ROOT"/vllm-*.log; do
     [ -f "$f" ] && tail -n 120 "$f" | cut -c1-300 >"$OUT/$(basename "$f" .log).tail.log"

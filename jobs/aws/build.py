@@ -55,7 +55,8 @@ PHASE3_FILES = {
     "src/kvevac/vllm_plugin/gpu_test.py": "kvevac/vllm_plugin/gpu_test.py",
     "src/kvevac/measure/__init__.py": "kvevac/measure/__init__.py",
     "src/kvevac/measure/console_channel.py": "kvevac/measure/console_channel.py",
-    "notice_logger.py": "jobs/aws_fis/notice_logger.py",
+    # No notice_logger.py: phase3 runs on demand, where no spot notice arrives (its
+    # restart loop in job.sh then idles harmlessly).
     "job.sh": "jobs/aws/instance_job.sh",
 }
 

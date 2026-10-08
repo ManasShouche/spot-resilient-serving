@@ -185,6 +185,8 @@ def main() -> None:
                         help="multiply the sessions' prompt lengths (RAM-tier runs need <1)")
     parser.add_argument("--notice-s", type=float, default=120.0)
     parser.add_argument("--python", default=sys.executable)
+    parser.add_argument("--cold-tier", type=Path,
+                        help="tier for the cold baseline (default: next to --tier)")
     parser.add_argument("--logs", type=Path, default=Path("."),
                         help="where the vLLM server logs go (keep them out of --out)")
     args = parser.parse_args()
@@ -198,7 +200,7 @@ def main() -> None:
     def save() -> None:
         report_path.write_text(json.dumps(result, indent=1))
 
-    tier, cold_tier = args.tier, args.tier.parent / "cold-tier"
+    tier, cold_tier = args.tier, args.cold_tier or args.tier.parent / "cold-tier"
     for path in (tier, cold_tier):
         path.mkdir(parents=True, exist_ok=True)
     control = args.out / "flush.json"
