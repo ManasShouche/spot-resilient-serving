@@ -1,0 +1,254 @@
+% Workshop version of docs/paper/draft.md. Build: tectonic main.tex
+\documentclass[10pt,twocolumn]{article}
+\usepackage[margin=0.75in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{booktabs}
+\usepackage{amsmath,amssymb}
+\usepackage{url}
+\usepackage[hidelinks]{hyperref}
+\usepackage{enumitem}
+\setlist{nosep,leftmargin=*}
+
+\newcommand{\Sim}{\textsuperscript{S}}
+\newcommand{\Cal}{\textsuperscript{C}}
+\newcommand{\Meas}{\textsuperscript{M}}
+
+\title{Spending the Spot Notice: Deadline-Bounded Evacuation\\of Agent-Session KV Caches}
+\author{Anonymous Author(s)}
+\date{}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Agentic LLM workloads keep tens of thousands of tokens of KV cache per session alive
+\emph{between} turns. When a spot GPU node is reclaimed, that cache is lost silently:
+no request fails, but every later turn of every resident session pays a full
+re-prefill. Existing fault-tolerance systems protect in-flight requests, and agent-KV
+systems protect idle sessions only against eviction. Replaying 393 real Claude Code
+sessions, we find that 75--78\% of a large serving node's resident KV belongs to
+sessions with no turn in flight. We treat the cloud's termination notice as a budget
+and plan which session caches to save, and where, under a deadline, bandwidth and
+failure domains. In simulation calibrated on an NVIDIA L40S, on-notice evacuation
+recovers 47--52\% of reclaim-induced recompute at a 2-minute notice with zero
+steady-state cost, within 5--10 points of continuous replication. When replication's
+DRAM is instead given to the primary cache (equal memory), evacuation still recovers
+about half, while replication does worse than doing nothing. We implement the policy
+as an out-of-tree plugin for vLLM's tiered KV offloading. On AWS it evacuates 10.2\,GB
+of session KV from an L40S node to a CPU memory node's DRAM (served over NFS) in
+6.6\,s, and restores it with greedy output identical to recomputation. For 8B on an
+L40S, restore and recompute are at parity (single runs), which we report as a
+crossover, not a win.
+\end{abstract}
+
+\noindent\emph{Labels:} \Sim{} simulated; \Cal{} simulated with constants measured on
+hardware; \Meas{} measured on hardware.
+
+\section{Introduction}
+Serving agents is dominated by long, multi-turn sessions. In the AgentX corpus of 393
+Claude Code sessions~\cite{agentx}, median input context is about 89k tokens, a
+session makes a median of 70 requests, and the median session lasts 1.8\,h.
+Providers increasingly serve on preemptible capacity, which AWS reclaims with a
+2-minute notice (Azure and GCP give 30\,s).
+
+What does a reclaim cost? Spot and fault-tolerant serving
+systems~\cite{spotserve,shuntserve,kevlarflow,lumen,ghostserve} answer for the
+\emph{in-flight request}. They restart it, migrate it, or replicate its KV
+continuously. For agentic serving this misses the main asset: the \emph{idle session
+prefix}. It is not running, so losing it fails nothing, but the next turn silently
+re-prefills 50--100k tokens. Agent-KV systems~\cite{continuum,cachescout,kvflow} do
+manage idle prefixes, but against eviction on a live node, not node loss.
+
+\paragraph{Contributions.}
+(1)~A characterization: on a large node, 75--78\% of resident KV is not running, and
+about a third belongs to sessions that never return (\S\ref{sec:char}).
+(2)~A deadline-bounded evacuation planner over in-flight and idle KV objects with
+release times, per-destination ingress, failure domains and $P(\text{reuse})$. It
+generalises ShuntServe's stated future work from requests to
+sessions~(\S\ref{sec:design}).
+(3)~A regime map of when evacuation matches continuous replication, when it beats it,
+and when it cannot help (\S\ref{sec:regime}).
+(4)~An out-of-tree vLLM~\cite{vllm} prototype, evaluated on a real L40S, flushing to
+local NVMe and to a separate CPU memory node over the network, with output parity
+(\S\ref{sec:proto}). The hardware runs exercise the mechanism; the planner's choices
+under a tight budget are evaluated only in simulation.
+
+\paragraph{Not claimed.} Predicting preemption~\cite{parcae,skynomad,hazardserve};
+exploiting correlated preemption~\cite{skyserve}; that KV transfer generally beats
+recompute (ShuntServe~\cite{shuntserve} measured the opposite on g6/g6e, and so do we
+on slow tiers); a better reuse predictor~\cite{cachescout,continuum}.
+
+\section{Background}
+\begin{table*}[t]
+\centering\footnotesize\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{@{}lll@{}}
+\toprule
+System & Protects & Idle session KV \\
+\midrule
+SpotServe, ShuntServe & in-flight, at notice & no \\
+KevlarFlow, LUMEN, GhostServe & in-flight, continuously & no \\
+hazardserve & in-flight, speculatively & no \\
+Mooncake, llm-d P2P & prefixes, continuously & lost with holder \\
+Continuum, CacheScout & idle, vs.\ eviction & no node loss \\
+\textbf{This work} & \textbf{idle + in-flight, at notice} & \textbf{yes} \\
+\bottomrule
+\end{tabular}
+\caption{What each line of work protects, and when.}
+\label{tab:related}
+\end{table*}
+Table~\ref{tab:related} summarises the related work. llm-d's graceful shutdown drains
+only in-flight requests. Its P2P sharing~\cite{llmdp2p} is a natural restore path for
+evacuated blocks, but it assumes the peer survives. TraceLab~\cite{tracelab} calls for
+KV management around the idle gaps in coding-agent workloads.
+
+\section{Design}\label{sec:design}
+\paragraph{Budget.} A notice of $W$ seconds and egress bandwidth $B$ against resident
+KV $R$ give the budget ratio $\rho = WB/R$. When $\rho \ge 1$ everything fits; when
+$\rho < 1$ the planner decides.
+
+\paragraph{Planner.} Objects are in-flight requests (which may finish locally if their
+remaining decode fits in $W$) and idle session prefixes. Each has a size $c$, a
+recompute cost $r(c) = \frac{c}{p}\left(1 + \frac{c}{2k}\right)$ and a reuse
+probability. Its value is $P(\text{reuse})\,(r(c) - \text{reload})$. Destinations
+carry a failure domain, free capacity and ingress already booked by other evacuating
+nodes. Peers in the reclaim wave are excluded. A greedy pass by value density over one
+serial egress pipe with release times places each object on the destination that
+finishes it before the deadline at the highest value. Leftover time carries partial
+prefixes, since a prefix is usable from the front. Sessions then expand into vLLM
+block-hash chains, in prefix order, deduplicated and cut to budget.
+
+\paragraph{vLLM plugin.} vLLM's tiered offloading cascades every stored block to all
+secondary tiers, and drops cascades under backpressure. Our offloading spec loads out
+of tree, with no fork, and adds: a \emph{deferred} mode, where blocks stay in the CPU
+tier and are tracked per agent session; a \emph{hybrid} mode, which writes through
+where backpressure admits and tracks the rest as dirty; and a deadline flush. On
+notice, a handler writes a flush request \emph{before} pausing admission. The
+scheduler-side manager plans and submits store jobs through vLLM's own store path.
+Restore needs nothing new: a later request finds the blocks by hash.
+
+\section{Characterization}\label{sec:char}
+A discrete-event simulator of a 12-node fleet in 3 failure domains replays the AgentX
+corpus, resampled to a load whose median TTFT matches a calibrated baseline. Real
+sessions last about 3$\times$ longer than a generator fitted to the same marginals,
+so equal session counts overload the fleet. Table~\ref{tab:char} gives steady-state
+snapshots.
+\begin{table}[t]
+\centering\footnotesize\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+Node (cache) & KV p50 & Not running & Returning \\
+\midrule
+8B, 4M tok & 441\,GB & \textbf{78\%} & 66\% \\
+70B on 4$\times$H100, 4M tok & 1{,}095\,GB & \textbf{75\%} & 68\% \\
+8B, g6e.xlarge, 400k tok & 33\,GB & 100\% & 100\% \\
+\bottomrule
+\end{tabular}
+\caption{Value at risk per node on real sessions\Sim. ``Returning'' is the share of
+rebuild cost belonging to sessions that send another turn.}
+\label{tab:char}
+\end{table}
+Three-quarters of what a reclaim destroys is beyond the reach of in-flight fault
+tolerance. A third of it is dead weight a planner should skip. And a single
+g6e.xlarge has $\rho \ge 1$ in every snapshot: small nodes need no planner.
+
+\section{Regime map}\label{sec:regime}
+\begin{table}[t]
+\centering\footnotesize\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+Policy & ind.\,30s & ind.\,120s & cor.\,30s & cor.\,120s \\
+\midrule
+Evacuate (ours) & $-14$ & $\mathbf{-52}$ & $-10$ & $\mathbf{-47}$ \\
+Session write-through & $-63$ & $-59$ & $-55$ & $-50$ \\
+Hybrid (ours) & $-71$ & $-66$ & $-51$ & $-56$ \\
+In-flight replication & $-31$ & $-29$ & $-27$ & $-30$ \\
+\bottomrule
+\end{tabular}
+\caption{Reclaim-induced recompute, \% change vs.\ no reaction, on real sessions with
+L40S constants\Cal. Paired seeds; 95\% CIs $\pm$5--40 points. Steady-state egress:
+evacuate 0; write-through and hybrid $\sim$50\,TB; in-flight replication
+$\sim$584\,TB.}
+\label{tab:regime}
+\end{table}
+Table~\ref{tab:regime} compares policies. Evacuation \emph{wins} in two regimes\Sim.
+\emph{At equal memory}, if the DRAM that write-through spends on replicas goes to the
+primary cache instead, evacuation reaches $-50\%$ ($-46\%$ correlated) at
+$W{=}120$\,s, while write-through \emph{increases} reclaim cost by 84--94\%:
+halving the primary cache costs more in steady-state misses than replicas save at
+reclaim. This holds only under that memory constraint; with spare DRAM
+(Table~\ref{tab:regime}) write-through is the strongest single policy.
+\emph{With a shared store} of $\sim$1\,GB/s across 12 nodes, write-through drops
+bursts and falls to $-25\%$, while evacuation holds $-43\%$ and hybrid $-51\%$.
+Evacuation \emph{cannot help} at $W{=}0$, and recovers only 10--27\% at 30\,s. An
+oracle reuse predictor adds no significant benefit over recency on real
+sessions\Sim. A synthetic-only finding that failure-domain-blind pools are fragile
+did not replicate on real sessions, and we retract it.
+
+\section{Prototype on real GPUs}\label{sec:proto}
+\paragraph{Calibration\Meas.} On an L40S with Llama-3.1-8B and vLLM 0.31.0, cold
+prefill runs at 16{,}011\,tok/s with a 20.5k-token attention knee (the fit is within
+1\% from 32k to 120k tokens), and decode at 46.7\,tok/s. Receiver-side interference
+from 1--16\,GB/s of incoming KV traffic is 0--3\%.
+
+\paragraph{Mechanism\Meas.} Two sessions (57k and 20k tokens). Process A runs in
+deferred mode, flushes on an emulated 120\,s notice, and is \texttt{SIGKILL}ed. A
+fresh process restores turn 2 from the tier, and another computes it cold
+(Table~\ref{tab:proto}). Deferred mode left the tier empty until the notice in every
+run. Flush projections were within 6--15\%, and restored KV decoded identically to
+recomputed KV under greedy decoding. The prompts are random words, so this checks KV
+correctness, not answer quality. The memory node stands in for a surviving peer; it is
+not a second GPU server, and NFS into vLLM's CPU tier is not a production restore path.
+
+\paragraph{The planner had nothing to decide.} Both sessions fit in 6.6\,s of a 120\,s
+notice ($\rho \gg 1$), so every run saved everything. These runs validate the flush
+mechanism and its time projection, not the planner's choices, which rest on
+\S\ref{sec:regime}.
+\begin{table}[t]
+\centering\footnotesize\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{@{}lrrc@{}}
+\toprule
+Tier & Flush (proj.) & TTFT 59k: rest./cold & Par. \\
+\midrule
+Local NVMe & 49.2 (46.5)\,s & 19.4 / 9.3\,s & \checkmark \\
+Memory node & \textbf{6.6} (7.8)\,s & 8.3 / 9.1\,s & \checkmark \\
+\bottomrule
+\end{tabular}
+\caption{Evacuating and restoring 10.17\,GB of session KV\Meas, single runs. Memory node: an r7i.xlarge CPU instance exporting
+20\,GB of RAM over NFS in the same zone. At 22k tokens,
+restore loses on both tiers (6.6 and 2.9\,s vs.\ 2.4\,s cold).}
+\label{tab:proto}
+\end{table}
+\paragraph{Restore vs.\ recompute.} From local NVMe ($\sim$0.4\,GB/s end to end)
+restore loses by 2--3$\times$. From the memory node ($\sim$0.9\,GB/s end to end, limited
+by vLLM's promotion pipeline rather than the 1.3--1.5\,GB/s network) it is 9\% faster
+at 59k tokens and 23\% slower at 22k. These are single runs. Cold TTFT for the same 59k
+prompt was 9.33 and 9.11\,s on two instances, so the 59k gap is suggestive, not
+established; we call it parity. This agrees with the arithmetic: for 8B on L40S,
+recompute costs the equivalent of $\sim$0.83\,GB/s of KV. We expect larger models to
+favour restore, since a 70B model has 2.5$\times$ the KV per token but about
+8.75$\times$ the prefill compute, but this is reasoning, not measurement.
+
+\section{Limitations}
+The simulator has no memory-based admission control and uses assumed network
+constants. Differences under about 20 points are within noise. Spot g6e capacity was
+unavailable throughout (placement score 1/10 in three US regions), so real notice
+timing is unmeasured and the GPU tests emulate the reclaim with \texttt{SIGKILL}. No
+GPU run had $\rho < 1$, so the planner is untested on hardware, and the GPU timings
+are single runs without error bars. GPU results are for 8B only. The ``peer'' was a CPU
+memory node serving RAM over NFS; a surviving GPU peer reached by NIXL P2P into GPU
+memory would remove the promotion bottleneck, and is unmeasured.
+
+\section{Conclusion}
+In agentic serving, most of the state a spot reclaim destroys is idle session KV that
+no existing mechanism protects. The termination notice is enough to move it: 10\,GB
+in under 7\,s on commodity cloud networking, planned against the deadline, and
+restored with output identical to recomputation. Whether moving it \emph{pays} is a
+crossover in model size, context length and restore bandwidth. For 8B on an L40S we
+measured parity; the larger-model side of the crossover is the next measurement, not a
+result.
+
+\bibliographystyle{plain}
+\bibliography{refs}
+\end{document}
