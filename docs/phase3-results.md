@@ -42,6 +42,8 @@ KV, not answer quality on real text.
 | local NVMe (run 2) | 0.22 GB/s | s-long | 58,784 tok | 19.38 s | 9.33 s | 2.08× slower |
 | local NVMe (run 2) | 0.22 GB/s | s-short | 22,000 tok | 6.63 s | 2.37 s | 2.79× slower |
 | RAM / tmpfs (run 3) | 2.18 GB/s | s-long | 40,052 tok (turn 1) | no result | no result | — |
+| **peer DRAM over the network** (two nodes, 8 Oct) | 1.30 GB/s | s-long | 58,784 tok | **8.31 s** | 9.11 s | **1.10× faster** |
+| **peer DRAM over the network** (two nodes, 8 Oct) | 1.30 GB/s | s-short | 22,000 tok | 2.94 s | 2.39 s | 1.23× slower |
 
 On the instance NVMe, restore moves about 0.39–0.40 GB/s end to end (7.5 GB in 19.4 s;
 2.7 GB in 6.6 s). The L40S recomputes 57k tokens in about 9 s, which is equivalent to
@@ -57,6 +59,39 @@ CPU tier plus the vLLM process on a 32 GiB instance with no swap. A g6e.xlarge i
 small to emulate a fast tier in its own RAM. The fast-tier case needs either two
 instances (a peer's DRAM over the NIC, the real deployment shape) or a larger instance.
 
+## 2b. Two nodes: evacuate to, and restore from, a peer's DRAM (8 October)
+
+`jobs/aws/two_node.sh`: a CPU memory node (r7i.xlarge) exports 20 GB of RAM over
+NFS (`nconnect=8`) in the same zone as the L40S node. The plugin's flush and the
+restore both cross the network, which is the deployment shape: a surviving peer's
+DRAM tier. Raw data is in `results/phase3/two-node-peer-dram-20261008/`.
+
+| check | result |
+|---|---|
+| deferred mode, tier before the notice | 0 files |
+| flush to the peer, 120 s deadline | **4,851 / 4,851 blocks (10.17 GB) confirmed in 6.6 s** (projected 7.8 s) |
+| restore in a fresh process, from the peer's RAM | worked |
+| output parity vs. cold recompute | **identical for both sessions** |
+| TTFT, 58.8k-token turn 2 | **8.31 s restored vs. 9.11 s cold (1.10× faster)** |
+| TTFT, 22k-token turn 2 | 2.94 s restored vs. 2.39 s cold (slower) |
+
+- **The evacuation side is easy.** At network speed, all 10 GB of both sessions left
+  the "reclaimed" node in 6.6 s, about 5% of AWS's 2-minute notice. For a node like this
+  the planner has nothing to choose (ρ ≫ 1). That matches the characterization (§2 of
+  phase1c-results) and the positioning doc's warning that the planner only matters on
+  big nodes or short notices.
+- **The restore side sits at the crossover** for an 8B model on an L40S. Restore runs at
+  about 0.9 GB/s end to end (7.5 GB in about 8.3 s). That is above recompute's ~0.83
+  GB/s equivalent, so the long session wins, narrowly. The short one loses to fixed
+  promotion overheads. Upstream's promotion path (NFS read → CPU tier → GPU, in
+  scheduler-step batches), not the network, is the bottleneck: the same mount took
+  writes at 1.3–1.5 GB/s.
+- **For the claims:** evacuation is a sure win for *preserving* the KV within the
+  notice. Whether *restoring* it beats recompute depends on model size, context length
+  and restore path. For 8B on L40S it is roughly break-even. It tips toward restore for
+  larger models (2.5× the KV but ~8.75× the prefill compute per token at 70B), longer
+  contexts, or a faster restore path (e.g. NIXL P2P into GPU memory).
+
 ## 3. What this means for the claims
 - The Phase 3 design is implementable out of tree, against vLLM's real tiering code,
   without a fork, and it is correct (parity).
@@ -71,8 +106,8 @@ instances (a peer's DRAM over the NIC, the real deployment shape) or a larger in
   so on the same GPU budget its crossover tier bandwidth is several times lower.
 
 ## 4. Not yet tested
-- Two machines: evacuation over a real NIC to a peer's tier (llm-d-style P2P), and a
-  real FIS reclaim instead of SIGKILL.
+- A real FIS reclaim instead of SIGKILL (needs spot capacity), and NIXL P2P restore
+  straight into a peer's GPU instead of NFS.
 - Hybrid mode under real backpressure.
 - `on_schedule_end` on an engine with nothing in flight. The test kept the scheduler
   stepping with one-token wake requests.

@@ -20,8 +20,9 @@ in systems check.
 > 44–52% of reclaim-induced recompute at a 2-minute notice, with zero steady-state
 > cost. At equal memory it beats continuous replication, which ends up worse than
 > doing nothing. I calibrated the cost model on a real L40S, where the ranking held and receiver-side
-> interference measured 0–3%, and I am prototyping the policy inside vLLM's tiered
-> KV offloading.
+> interference measured 0–3%. I built the policy as an out-of-tree plugin for vLLM's tiered
+> KV offloading. On two AWS nodes it evacuated 10 GB of session KV to a peer's DRAM in
+> under 7 s of a 120 s notice, and restored it with output identical to recompute.
 
 ## The story, in the order an SOP should tell it
 
@@ -73,8 +74,8 @@ in systems check.
 2. Done: the Phase 1c experiments now also run on the real AgentX trace.
 3. Done (single node): the plugin ran on a real L40S under vLLM 0.31.0. The deadline
    flush matched its projection within 6%, and restore achieved output parity
-   ([phase3-results.md](phase3-results.md)). Next: two nodes, so restore comes from a
-   peer's DRAM over the NIC, which is the fast-tier case where restore should beat
-   recompute.
+   ([phase3-results.md](phase3-results.md)). Two nodes done too: the KV was evacuated to a
+   peer's DRAM over the network in 6.6 s, and restore beat recompute on a 59k-token
+   turn (8.3 s vs 9.1 s) with output parity.
 4. A 4-page workshop submission (EuroMLSys / MLSys or NeurIPS systems workshops);
    positioning.md §5 lists the experiments.

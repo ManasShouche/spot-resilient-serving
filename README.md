@@ -61,7 +61,9 @@ at zero steady-state cost?
   Deferred mode kept the tier empty until the notice. The deadline flush wrote and
   confirmed 10.2 GB in 49 s, against a 46.5 s projection. A fresh process restored the
   sessions with **output parity** against cold recompute. On the instance's NVMe (~0.4
-  GB/s restore) recompute is faster; restore needs ≥0.8 GB/s to win for 8B on L40S.
+  GB/s restore) recompute is faster. **Two nodes**: evacuation to a peer's DRAM over the
+  network took 6.6 s for 10.2 GB, and restore from it beat recompute on a 59k-token turn
+  (8.3 s vs 9.1 s TTFT) with output parity. 8B on L40S sits at the crossover.
 - [ ] Phase 4: live FIS-triggered reclaims, then the write-up.
 
 ![Write-through vs hybrid vs evacuation under a replication bandwidth budget](docs/figures/backpressure.svg)
