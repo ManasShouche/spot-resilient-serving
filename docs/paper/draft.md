@@ -201,9 +201,10 @@ not measurement.
 - **The simulator is a model.** It has no memory-based admission control, an
   approximate prefill-queue contention model, and assumed network constants. Policy
   differences under about 20 points are within noise.
-- **No real reclaim yet.** Spot g6e capacity was unavailable throughout (placement
-  score 1/10 in three US regions), so FIS notice timing is unmeasured and the GPU tests
-  emulate the reclaim with SIGKILL.
+- **No real reclaim on a GPU.** Spot g6e capacity was unavailable throughout (placement
+  score 1/10 in three US regions), so the GPU tests emulate the reclaim with SIGKILL. A real
+  FIS interruption on a CPU spot instance (m7i.large) announced 118 s of notice, of which at
+  least 97 s was observed usable (one run; `results/phase2/fis-notice-m7i-us-east-2-20261008/`).
 - **The planner is untested on hardware.** No GPU run had ρ < 1 (§6).
 - **Single runs.** The GPU timings have no repeats or error bars.
 - **Small models are the hard case for restore.** The prototype's GPU results are for

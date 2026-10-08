@@ -69,9 +69,33 @@ data/raw/agentx.jsonl --calibration results/phase2/l40s-us-east-2-20261007/prefi
 - The 95% intervals are wide (±5–42 points at 6 seeds). Treat differences under about
   20 points as ties.
 
-## 4. Still unmeasured
-- **FIS notice timing** (how much of the 120 s is usable). Needs a spot run:
-  `RETRY_MIN=120 AWS_REGION=us-east-2 bash jobs/aws/kvevac-aws.sh` when capacity returns.
+## 4. A real spot interruption: notice timing (8 October)
+
+Spot L40S capacity never appeared (placement score 1/10 in three US regions for two
+days). Notice delivery is an EC2 spot property, not a GPU one, so we measured it on a
+spot `m7i.large` in us-east-2 (placement score 9/10, $0.0285/h): the same runner, the
+same IMDS notice logger heartbeating every second, and a real AWS FIS
+`send-spot-instance-interruptions` action with a 2-minute notice.
+Raw data: `results/phase2/fis-notice-m7i-us-east-2-20261008/`.
+
+| measure | value |
+|---|---|
+| announced notice (interruption notice seen → announced termination time) | **118.07 s** |
+| rebalance recommendation lead over the interruption notice | 1.0 s |
+| heartbeats observed after the notice | **97.1 s** (101 heartbeats) |
+| last heartbeat vs. announced termination | −20.9 s |
+| termination recorded by EC2 | 11:43:54, 3 s after the announced 11:43:51 |
+
+- **About 118 s of the nominal 120 s is announced, and at least 97 s was observed
+  usable.** The last ~21 s before termination are unobserved: the console shows no
+  shutdown messages, so either the OS began shutting down or capture stopped. Plan
+  against about 95 s, not 120 s. That is still ~14× the 6.6 s the two-node flush needed.
+- **The rebalance recommendation gave no useful extra warning** under FIS (1 s). Real,
+  capacity-driven reclaims can send it minutes earlier; FIS doesn't model that.
+- One run, one instance type: a sanity check of the notice path, not a distribution.
+
+## 5. Still unmeasured
+- FIS notice timing on a GPU instance under load (§4 measured it on a CPU spot instance).
 - **Sustained NIC and object-store bandwidth** (sets ρ). The links in `profiles.py`
   remain assumed.
 - The vLLM plugin (Phase 3) on a GPU.

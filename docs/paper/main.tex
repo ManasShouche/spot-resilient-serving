@@ -233,8 +233,10 @@ favour restore, since a 70B model has 2.5$\times$ the KV per token but about
 \section{Limitations}
 The simulator has no memory-based admission control and uses assumed network
 constants. Differences under about 20 points are within noise. Spot g6e capacity was
-unavailable throughout (placement score 1/10 in three US regions), so real notice
-timing is unmeasured and the GPU tests emulate the reclaim with \texttt{SIGKILL}. No
+unavailable throughout (placement score 1/10 in three US regions), so the GPU tests
+emulate the reclaim with \texttt{SIGKILL}. A real FIS interruption on a CPU spot
+instance announced 118\,s of notice, of which at least 97\,s was observed usable
+(one run), still about 14$\times$ the 6.6\,s flush. No
 GPU run had $\rho < 1$, so the planner is untested on hardware, and the GPU timings
 are single runs without error bars. GPU results are for 8B only. The ``peer'' was a CPU
 memory node serving RAM over NFS; a surviving GPU peer reached by NIXL P2P into GPU
