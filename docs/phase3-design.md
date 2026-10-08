@@ -91,7 +91,10 @@ worthless if the head is lost.
 
 ## Prototype status (October 2026)
 
-Written against vLLM `34051ad`; **not yet run against a real vLLM server or GPU.**
+Written against vLLM `34051ad`. **Ran on a real L40S under vLLM 0.31.0** (same tiering
+code) on 7 Oct 2026: deferred cascade, deadline flush and restore in a fresh process all
+work, and greedy outputs match a cold recompute. See
+[phase3-results.md](phase3-results.md).
 
 | Piece | Where | State |
 |---|---|---|

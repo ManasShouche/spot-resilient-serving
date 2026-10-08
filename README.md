@@ -56,11 +56,12 @@ at zero steady-state cost?
   Receiver-side interference from incoming KV is **0–3%**. The simulator's ranking
   holds with measured constants. Not yet measured: FIS notice timing (needs spot
   capacity) and NIC/store bandwidth.
-- [~] Phase 3: a vLLM prototype, written but **not yet run on a GPU**
-  (`kvevac/vllm_plugin`, [status](docs/phase3-design.md#prototype-status-october-2026)).
-  It is an out-of-tree offloading spec. Deferred/hybrid cascades keep session KV in
-  the CPU tier; on notice, the handler triggers a deadline-bounded, planner-ordered
-  flush to a secondary tier. Still to do: the GPU run and the output-parity test.
+- [x] **Phase 3 (first GPU test):** the out-of-tree vLLM plugin (`kvevac/vllm_plugin`)
+  ran on a real L40S under vLLM 0.31.0 ([docs/phase3-results.md](docs/phase3-results.md)).
+  Deferred mode kept the tier empty until the notice. The deadline flush wrote and
+  confirmed 10.2 GB in 49 s, against a 46.5 s projection. A fresh process restored the
+  sessions with **output parity** against cold recompute. On the instance's NVMe (~0.4
+  GB/s restore) recompute is faster; restore needs ≥0.8 GB/s to win for 8B on L40S.
 - [ ] Phase 4: live FIS-triggered reclaims, then the write-up.
 
 ![Write-through vs hybrid vs evacuation under a replication bandwidth budget](docs/figures/backpressure.svg)

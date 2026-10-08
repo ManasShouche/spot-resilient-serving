@@ -62,14 +62,19 @@ in systems check.
 - "First to predict" or "first to use correlated preemption".
 - "KV transfer beats recompute" in general.
 - Any percentage without "in simulation".
-- "Deployed" or "production" for the vLLM plugin until it has run on a GPU.
+- "Deployed" or "production" for the vLLM plugin. It is a prototype tested on one GPU.
+- "Restore is faster than recompute" in general. It was slower on local NVMe; that
+  depends on tier bandwidth.
 
 ## What would most strengthen the application, cheapest first
 1. Done: the cost model is calibrated on a real L40S
    ([phase2-results.md](phase2-results.md)), and receiver interference is measured
    at 0–3%. Next: a spot run for FIS notice timing.
 2. Done: the Phase 1c experiments now also run on the real AgentX trace.
-3. A two-node GPU demo of the plugin with output parity. Even one plot of returning
-   session TTFT, evacuated vs. cold, is strong evidence.
+3. Done (single node): the plugin ran on a real L40S under vLLM 0.31.0. The deadline
+   flush matched its projection within 6%, and restore achieved output parity
+   ([phase3-results.md](phase3-results.md)). Next: two nodes, so restore comes from a
+   peer's DRAM over the NIC, which is the fast-tier case where restore should beat
+   recompute.
 4. A 4-page workshop submission (EuroMLSys / MLSys or NeurIPS systems workshops);
    positioning.md §5 lists the experiments.
