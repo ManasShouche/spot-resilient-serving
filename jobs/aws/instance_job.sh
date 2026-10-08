@@ -16,7 +16,7 @@
 #
 # Tunables (kvevac-aws.sh can prepend them to user-data):
 #   MODEL, MAX_MODEL_LEN, VLLM_SPEC (pip spec, default "vllm"), KVEVAC_MAX_MIN (90),
-#   PREFILL_CONTEXTS, PREFILL_REPEATS, INTERFERENCE_REPEATS
+#   PREFILL_CONTEXTS, PREFILL_REPEATS, INTERFERENCE_REPEATS, INTERFERENCE_CONTEXT (32000)
 # Test hooks (jobs/aws/dry_run.sh; leave unset on AWS):
 #   KVEVAC_ROOT, KVEVAC_CONSOLE, KVEVAC_IMDS, KVEVAC_DRY_RUN=1 (no shutdown timer),
 #   SKIP_INSTALL=1 + PYTHON, VLLM_CMD, KVEVAC_RESEND_S
@@ -29,6 +29,7 @@ MAX_MIN="${KVEVAC_MAX_MIN:-90}"
 PREFILL_CONTEXTS="${PREFILL_CONTEXTS:-1000 4000 16000 32000 64000 96000 120000}"
 PREFILL_REPEATS="${PREFILL_REPEATS:-3}"
 INTERFERENCE_REPEATS="${INTERFERENCE_REPEATS:-5}"
+INTERFERENCE_CONTEXT="${INTERFERENCE_CONTEXT:-32000}"
 RESEND_S="${KVEVAC_RESEND_S:-120}"
 IMDS="${KVEVAC_IMDS:-http://169.254.169.254}"
 if [ -z "${KVEVAC_CONSOLE:-}" ]; then
@@ -109,9 +110,12 @@ if [ "${SKIP_INSTALL:-0}" != 1 ]; then
     export PATH="$ROOT/bin:$HOME/.local/bin:$PATH"
   fi
   uv venv -q -p 3.12 "$ROOT/venv" || { event error "uv venv failed"; exit 1; }
-  uv pip install -q -p "$ROOT/venv/bin/python" "${VLLM_SPEC:-vllm}" \
+  # ninja: FlashInfer JIT-compiles kernels on first use and shells out to it (the
+  # first real run, vLLM 0.31.0, died with "No such file or directory: 'ninja'").
+  uv pip install -q -p "$ROOT/venv/bin/python" "${VLLM_SPEC:-vllm}" ninja \
     || { event error "vllm install failed"; exit 1; }
   PYTHON="$ROOT/venv/bin/python"
+  export PATH="$ROOT/venv/bin:$PATH"
 fi
 PYTHON="${PYTHON:-python3}"
 export PYTHONPATH="$ROOT/src"
@@ -143,10 +147,71 @@ json.dump(info, open(out, "w"), indent=1)
 PY
 event env "GPU $GPU_NAME"
 
+if [ "${KVEVAC_JOB:-calibrate}" = phase3 ]; then
+  # Phase 3: the vLLM plugin's first GPU test (kvevac.vllm_plugin.gpu_test). The tier
+  # goes on the instance-store NVMe if there is one (DLAMIs mount it at /opt/dlami/nvme).
+  TIER_BASE="$ROOT"
+  # Memory on the console every 30 s, so a run that dies (run 3, 7 Oct) says why.
+  ( while true; do
+      event mem "$(free -g | awk '/Mem/{print "used " $3 "G avail " $7 "G"}') shm $(df -h /dev/shm | awk 'NR==2{print $3}')"
+      sleep 30
+    done ) &
+  if [ "${PHASE3_TIER:-nvme}" = peer ]; then
+    # The tier is a peer's RAM over NFS (jobs/aws/peer_node.sh): evacuation and
+    # restore both cross the network, like a surviving node's DRAM tier.
+    # The DLAMI has no NFS client. apt may be locked by boot-time unattended upgrades,
+    # so wait for the lock (the first two-node run, 8 Oct, failed silently here).
+    if [ ! -x /sbin/mount.nfs ]; then
+      export DEBIAN_FRONTEND=noninteractive
+      for _ in 1 2 3; do
+        apt-get -o DPkg::Lock::Timeout=300 update -qq \
+          && apt-get -o DPkg::Lock::Timeout=300 install -y -qq nfs-common && break
+        sleep 15
+      done
+      [ -x /sbin/mount.nfs ] || { event error "nfs-common install failed"; exit 1; }
+    fi
+    event phase3 "nfs client ready; mounting ${PEER_IP}"
+    mkdir -p /mnt/peer
+    for _ in $(seq 1 60); do
+      mount -t nfs -o vers=4.2,nconnect=8,rsize=1048576,wsize=1048576,hard \
+        "${PEER_IP:?PEER_IP unset}:/export" /mnt/peer && break
+      sleep 10
+    done
+    mountpoint -q /mnt/peer || { event error "could not mount ${PEER_IP}:/export"; exit 1; }
+    TIER_BASE=/mnt/peer
+  elif [ "${PHASE3_TIER:-nvme}" = ram ]; then
+    mkdir -p /mnt/ram && mount -t tmpfs -o "size=${PHASE3_RAM_GB:-9}g" tmpfs /mnt/ram \
+      && TIER_BASE=/mnt/ram
+  elif mountpoint -q /opt/dlami/nvme 2>/dev/null; then
+    TIER_BASE=/opt/dlami/nvme
+  else
+    DEV="$(lsblk -dpnP -o NAME,MOUNTPOINT,MODEL 2>/dev/null \
+      | grep 'Instance Storage' | grep 'MOUNTPOINT=""' | head -1 | sed 's/NAME="\([^"]*\)".*/\1/')"
+    if [ -n "$DEV" ] && mkfs.ext4 -q -F "$DEV" && mkdir -p /mnt/nvme && mount "$DEV" /mnt/nvme; then
+      TIER_BASE=/mnt/nvme
+    fi
+  fi
+  event phase3 "tier on $TIER_BASE"
+  "$PYTHON" -m kvevac.vllm_plugin.gpu_test --model "$MODEL" --tier "$TIER_BASE/kvevac-tier" \
+    --out "$OUT" --logs "$ROOT" --python "$PYTHON" \
+    --cpu-gb "${PHASE3_CPU_GB:-14}" --scale "${PHASE3_SCALE:-1}" --cold-tier "$ROOT/cold-tier"
+  STATUS=$?
+  for f in "$ROOT"/vllm-*.log; do
+    [ -f "$f" ] && tail -n 120 "$f" | cut -c1-300 >"$OUT/$(basename "$f" .log).tail.log"
+  done
+  rm -f "$OUT/flush.json"
+  [ "$STATUS" = 0 ] || { event error "phase3 test failed"; exit 1; }
+  event "done" "phase3 test complete"
+  exit 0
+fi
+
 event vllm "starting server; model download and compile take a while"
 DEFAULT_VLLM_CMD="$PYTHON -m vllm.entrypoints.openai.api_server --model $MODEL --port 8000 \
   --max-model-len $MAX_MODEL_LEN --no-enable-prefix-caching --gpu-memory-utilization 0.90"
-VLLM_SERVER_DEV_MODE=1 bash -c "exec ${VLLM_CMD:-$DEFAULT_VLLM_CMD}" >"$ROOT/vllm.log" 2>&1 &
+# PyTorch sampling instead of FlashInfer's JIT-compiled sampler: nothing to compile at
+# startup, and sampling is not what we measure. Override with VLLM_USE_FLASHINFER_SAMPLER=1.
+VLLM_SERVER_DEV_MODE=1 VLLM_USE_FLASHINFER_SAMPLER="${VLLM_USE_FLASHINFER_SAMPLER:-0}" \
+  bash -c "exec ${VLLM_CMD:-$DEFAULT_VLLM_CMD}" >"$ROOT/vllm.log" 2>&1 &
 VLLM_PID=$!
 for i in $(seq 1 360); do
   curl -sf localhost:8000/health >/dev/null && break
@@ -166,7 +231,7 @@ event prefill "contexts $PREFILL_CONTEXTS x $PREFILL_REPEATS"
 for mode in host h2d; do
   event interference "mode $mode"
   "$PYTHON" -m kvevac.measure.interference --base-url http://localhost:8000 \
-    --model "$MODEL" --context 32000 --repeats "$INTERFERENCE_REPEATS" \
+    --model "$MODEL" --context "$INTERFERENCE_CONTEXT" --repeats "$INTERFERENCE_REPEATS" \
     --rates 1 2.5 10 0 --mode "$mode" --out "$OUT/interference-${mode}.json" \
     || event error "interference $mode failed"
 done

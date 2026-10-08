@@ -25,7 +25,7 @@
 # no spot capacity), MARKET (spot; "on-demand" for the calibration measurements only,
 # since FIS cannot interrupt an on-demand instance; ON_DEMAND_PRICE, default 1.861 $/h,
 # is used for the cost line), and for the instance: MODEL, MAX_MODEL_LEN, VLLM_SPEC,
-# PREFILL_CONTEXTS, PREFILL_REPEATS, INTERFERENCE_REPEATS.
+# PREFILL_CONTEXTS, PREFILL_REPEATS, INTERFERENCE_REPEATS, INTERFERENCE_CONTEXT.
 set -euo pipefail
 
 INSTANCE_TYPE="${INSTANCE_TYPE:-g6e.xlarge}"
@@ -42,7 +42,7 @@ RUNS="${KVEVAC_RUNS:-$HOME/kvevac-runs}"
 AMI_PARAM="${AMI_PARAM:-/aws/service/deeplearning/ami/x86_64/base-oss-nvidia-driver-gpu-ubuntu-22.04/latest/ami-id}"
 FIS_ROLE="${FIS_ROLE:-kvevac-fis}"
 TAG=kvevac-aws
-PASS_THROUGH="MODEL MAX_MODEL_LEN VLLM_SPEC PREFILL_CONTEXTS PREFILL_REPEATS INTERFERENCE_REPEATS KVEVAC_RESEND_S"
+PASS_THROUGH="MODEL MAX_MODEL_LEN VLLM_SPEC PREFILL_CONTEXTS PREFILL_REPEATS INTERFERENCE_REPEATS INTERFERENCE_CONTEXT KVEVAC_RESEND_S KVEVAC_JOB PHASE3_TIER PHASE3_RAM_GB PHASE3_CPU_GB PHASE3_SCALE PEER_IP"
 
 say() { printf '[%s] %s\n' "$(date -u +%H:%M:%S)" "$*"; }
 die() { say "ERROR: $*"; exit 1; }
@@ -51,6 +51,10 @@ now() { date +%s; }
 # ---- embedded files (filled in by build.py) -------------------------------------------
 USERDATA_GZ_B64=$(cat <<'KVEVAC_B64'
 @USERDATA_GZ_B64@
+KVEVAC_B64
+)
+USERDATA_PHASE3_GZ_B64=$(cat <<'KVEVAC_B64'
+@USERDATA_PHASE3_GZ_B64@
 KVEVAC_B64
 )
 CONSOLE_CHANNEL_GZ_B64=$(cat <<'KVEVAC_B64'
@@ -156,7 +160,11 @@ make_user_data() {
     for name in $PASS_THROUGH; do
       if [ -n "${!name:-}" ]; then printf 'export %s=%q\n' "$name" "${!name}"; fi
     done
-    echo "$USERDATA_GZ_B64" | base64 -d | gunzip
+    if [ "${KVEVAC_JOB:-calibrate}" = phase3 ]; then
+      echo "$USERDATA_PHASE3_GZ_B64" | base64 -d | gunzip
+    else
+      echo "$USERDATA_GZ_B64" | base64 -d | gunzip
+    fi
   } | gzip -9n >"$RUN_DIR/user-data.gz"
   size="$(wc -c <"$RUN_DIR/user-data.gz")"
   [ "$size" -lt 16384 ] || die "user-data is $size bytes; EC2 allows 16384"
@@ -413,6 +421,11 @@ for mode in ("host", "h2d"):
                          + (" (load failed)" if r.get("load_failed") else "")
                          for r in data["rows"][1:])
         print(f"slowdown    {mode}: {rows}")
+p3 = load("results/phase3.json")
+if p3:
+    print(f"phase3      tier {p3.get('tier_write_GBps')} GB/s; before flush "
+          f"{p3.get('tier_before_flush')}; after {p3.get('tier_after_flush')}")
+    print(f"phase3      TTFT speedup {p3.get('ttft_speedup')}; parity {p3.get('output_parity')}")
 notice = load("notice.json")
 if notice:
     n = notice[0]

@@ -24,7 +24,7 @@ console (`get-console-output`) as numbered, SHA-256-checked chunks.
 
 ### Permissions
 CloudShell runs as your console identity, which normally has what it needs. To run with
-a narrower IAM user instead (for example the `kvevac` user Claude uses), attach
+a narrower IAM user instead (for example a dedicated `kvevac` user), attach
 `jobs/aws/iam-policy.json` to it as an inline policy. It allows launching only
 `g6e.xlarge`, terminating only instances tagged `project=kvevac-aws`, the FIS calls, and
 creating and passing only the `kvevac-fis` role.
@@ -84,7 +84,12 @@ until a launch succeeds), `MARKET` (`spot`; `on-demand` runs the calibration
 measurements only, since FIS cannot interrupt an on-demand instance, and costs
 `ON_DEMAND_PRICE`=1.861 $/h); passed to the instance: `MODEL`, `MAX_MODEL_LEN`,
 `VLLM_SPEC` (e.g. `vllm==0.11.0` to pin), `PREFILL_CONTEXTS`, `PREFILL_REPEATS`,
-`INTERFERENCE_REPEATS`.
+`INTERFERENCE_REPEATS`, `INTERFERENCE_CONTEXT` (32000).
+
+On a 24 GB GPU (L4: `g6.xlarge`/`g6.2xlarge`; A10G: `g5.xlarge`) an 8B model leaves
+room for about 25k tokens of KV, so shorten everything:
+`INSTANCE_TYPE=g6.xlarge MAX_MODEL_LEN=24576 PREFILL_CONTEXTS="1000 4000 8000 16000 22000"
+INTERFERENCE_CONTEXT=16000`. The fit then covers contexts up to 22k only.
 
 ### If something goes wrong
 - `bash kvevac-aws.sh cleanup` terminates every `project=kvevac-aws` instance and
@@ -149,7 +154,7 @@ model download.
 - **Destroy the instance in the Vast console when the branch appears.** The job
   tries to destroy itself, but that depends on Vast-injected credentials that have
   not been verified, and storage bills until the instance is deleted.
-- Tell Claude the branch name. Next steps are `python -m kvevac.experiments all
+- Next steps, once the branch appears, are `python -m kvevac.experiments all
   --calibration <prefill.json-derived file>`, plus setting `ingress_slowdown` from
   the interference results.
 
@@ -164,7 +169,7 @@ download, CUDA, and Vast's environment variables.
 ## Job B: spot-notice timing with AWS FIS
 
 Needs the AWS CLI with credentials for your account (run from your own machine or
-CloudShell; this Claude session's AWS credentials do not currently work).
+CloudShell).
 
 ```bash
 REGION=us-east-1

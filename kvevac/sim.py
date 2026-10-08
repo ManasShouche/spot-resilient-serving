@@ -20,6 +20,18 @@ Policies differ only in what they do between notice and termination (and, for
 - hybrid:      replicate, and at notice drain + evacuate only objects whose replica
                is missing or stale (in-flight turns, sessions not yet replicated).
 
+Related-work baselines (docs/positioning.md, experiment 4):
+- inflight_replicate: KevlarFlow/LUMEN-style. Each running turn's KV is copied to a
+               peer in another failure group while it runs, and the copy is released
+               when the turn ends. Copies are refused when the peer has no free capacity
+               (KevlarFlow drops replicas under memory pressure). Protects in-flight
+               turns only; idle session caches are lost at termination.
+- pool:        Mooncake-store-style distributed KV pool. Finished session prefixes are
+               written to `pool_replicas` shards placed by rendezvous hashing over all
+               live nodes, with no failure-domain awareness. A reclaim deletes the
+               shards on the reclaimed nodes; a failover fetches a surviving shard over
+               the link unless the session is routed to the shard's node.
+
 Contention (FleetConfig.contention, default on): prefill is serialized per node, so a
 cold rebuild delays every turn queued behind it; decode is treated as batched and
 parallel. Time-to-first-token (TTFT) is recorded for every turn.
@@ -37,7 +49,7 @@ from enum import StrEnum
 from kvevac.costmodel import kv_bytes, recompute_s, transfer_s
 from kvevac.planner import Action, Destination, KVObject, plan_evacuation
 from kvevac.profiles import GpuProfile, LinkProfile, ModelProfile
-from kvevac.reuse import ReuseModel, recency_reuse_prob
+from kvevac.reuse import ReuseModel, hinted_reuse_prob, recency_reuse_prob
 from kvevac.workload import Session, quantile
 
 REPLICATION_MAX_QUEUE_S = 5.0
@@ -50,6 +62,15 @@ class Policy(StrEnum):
     REPLICATE = "replicate"
     HYBRID = "hybrid"
     """Continuous replication plus, at notice, evacuation of whatever replicas miss."""
+    INFLIGHT_REPLICATE = "inflight_replicate"
+    """KevlarFlow-style: replicate running turns only, released when the turn ends."""
+    POOL = "pool"
+    """Mooncake-style shared KV pool sharded across the (spot) nodes themselves."""
+
+
+CORE_POLICIES = (Policy.RECOMPUTE, Policy.DRAIN_LOCAL, Policy.EVACUATE, Policy.REPLICATE,
+                 Policy.HYBRID)
+"""The Phase 1b policy set; the related-work baselines are opt-in per experiment."""
 
 
 @dataclass(frozen=True)
@@ -86,6 +107,12 @@ class FleetConfig:
     """Per-node write-through budget. When the replication queue exceeds
     REPLICATION_MAX_QUEUE_S, the update is dropped and the replica goes stale (the
     shape of vLLM's ThrottledDropPolicy). None means unlimited bandwidth."""
+    pool_replicas: int = 1
+    """Copies of each session prefix kept by Policy.POOL."""
+    hint_accuracy: float = 0.8
+    """ReuseModel.HINTED: probability the hint (e.g. tool-call metadata) is right."""
+    hot_window_s: float = 60.0
+    """A session idle for less than this counts as hot in value-at-risk snapshots."""
 
 
 @dataclass
@@ -100,6 +127,10 @@ class NodeState:
     """Replica tier (only used when FleetConfig.replica_tokens > 0)."""
     in_flight: dict[str, tuple[float, int, int]] = field(default_factory=dict)
     """session id -> (finish time, context tokens, output tokens)."""
+    inflight_replicas: dict[str, int] = field(default_factory=dict)
+    """Policy.INFLIGHT_REPLICATE: copies of other nodes' running turns, held here."""
+    pool: OrderedDict[str, int] = field(default_factory=OrderedDict)
+    """Policy.POOL: this node's shard of the shared KV pool, LRU."""
     prefill_free_at: float = 0.0
     ingress_free_at: float = 0.0
     replication_free_at: float = 0.0
@@ -107,6 +138,9 @@ class NodeState:
 
     def used(self) -> int:
         return sum(self.cache.values())
+
+    def free_for_copies(self, capacity: int) -> int:
+        return capacity - self.used() - sum(self.inflight_replicas.values())
 
 
 @dataclass
@@ -130,6 +164,13 @@ class Metrics:
     last_event_s: float = 0.0
     budget_ratios: list[float] = field(default_factory=list)
     """Per reclaimed node: notice x link bandwidth / KV bytes resident at notice."""
+    displaced_ttft_s: list[float] = field(default_factory=list)
+    """TTFT of the first turn a session sends after its node was reclaimed. This is
+    where survivor overload from a correlated wave shows up."""
+    replica_refusals: int = 0
+    """INFLIGHT_REPLICATE: copies refused for lack of peer capacity."""
+    at_risk: list[dict] = field(default_factory=list)
+    """Value-at-risk snapshots (see Simulation.snapshot_every_s and notices)."""
 
     nodes: int = 1
 
@@ -157,6 +198,10 @@ class Metrics:
             "ttft_mean_s": round(sum(self.ttft_s) / max(1, len(self.ttft_s)), 2),
             "ttft_p50_s": round(quantile(self.ttft_s or [0.0], 0.5), 2),
             "ttft_p99_s": round(quantile(self.ttft_s or [0.0], 0.99), 2),
+            "displaced_turns": len(self.displaced_ttft_s),
+            "displaced_ttft_p50_s": round(quantile(self.displaced_ttft_s or [0.0], 0.5), 2),
+            "displaced_ttft_p99_s": round(quantile(self.displaced_ttft_s or [0.0], 0.99), 2),
+            "replica_refusals": self.replica_refusals,
         }
 
 
@@ -172,6 +217,10 @@ class SessionState:
     available_at: float = 0.0
     """Earliest time the session's (evacuated) cache is usable at its node."""
     last_active: float = 0.0
+    displaced: bool = False
+    """Its node was reclaimed since its last turn; the next TTFT is a displaced TTFT."""
+    inflight_replica: str | None = None
+    """INFLIGHT_REPLICATE: node holding a copy of the running turn's KV."""
 
 
 def independent_reclaims(node_ids: list[str], *, rate_per_node_h: float, horizon_s: float,
@@ -203,7 +252,9 @@ def correlated_reclaims(groups: dict[str, list[str]], *, bursts: int, horizon_s:
 class Simulation:
     def __init__(self, sessions: list[Session], reclaims: list[Reclaim], *, policy: Policy,
                  fleet: FleetConfig, model: ModelProfile, gpu: GpuProfile,
-                 link: LinkProfile, store: LinkProfile | None = None) -> None:
+                 link: LinkProfile, store: LinkProfile | None = None,
+                 snapshot_every_s: float | None = None,
+                 snapshot_until_s: float | None = None) -> None:
         self.policy = policy
         self.fleet = fleet
         self.model, self.gpu, self.link, self.store = model, gpu, link, store
@@ -221,6 +272,13 @@ class Simulation:
             self._push(state.session.start_s, "turn", (state.session.id, None))
         for reclaim in reclaims:
             self._push(reclaim.at_s, "notice", (reclaim,))
+        if snapshot_every_s:
+            until = snapshot_until_s or max(
+                (s.start_s + s.turns[-1].offset_s for s in sessions), default=0.0)
+            t = snapshot_every_s
+            while t < until:
+                self._push(t, "snapshot", ())
+                t += snapshot_every_s
 
     # ------------------------------------------------------------------ events
     def _push(self, at: float, kind: str, payload: tuple) -> None:
@@ -265,7 +323,7 @@ class Simulation:
         turn = state.session.turns[state.next_turn]
         node = self.nodes.get(state.node) if state.node else None
         if node is None or not node.alive or node.draining:
-            replica = self._take_replica(session_id, now)
+            replica = self._failover(session_id, now)
             if replica is not None:
                 node = replica
                 if state.available_at > now:
@@ -303,8 +361,13 @@ class Simulation:
             start = max(start, node.prefill_free_at)
             node.prefill_free_at = start + prefill
         self.metrics.ttft_s.append(start + prefill - requested)
+        if state.displaced:
+            self.metrics.displaced_ttft_s.append(start + prefill - requested)
+            state.displaced = False
         finish = start + prefill + turn.output_tokens / self.gpu.decode_tokens_per_s
         node.in_flight[session_id] = (finish, turn.input_tokens, turn.output_tokens)
+        if self.policy is Policy.INFLIGHT_REPLICATE:
+            self._replicate_in_flight(now, node, state, turn.input_tokens)
         node.cache.move_to_end(session_id) if session_id in node.cache else None
         self._push(finish, "finish", (session_id, node.id))
 
@@ -316,10 +379,13 @@ class Simulation:
         state = self.sessions[session_id]
         state.prefix_tokens = context + output
         state.last_active = now
+        self._release_in_flight_replica(state)
         if node.alive:
             self._insert(node, session_id, context + output)
             if self.policy in (Policy.REPLICATE, Policy.HYBRID):
                 self._replicate(now, node, state, context + output)
+            elif self.policy is Policy.POOL:
+                self._pool_write(now, node, state, context + output)
         state.next_turn += 1
         if state.next_turn < len(state.session.turns):
             turn = state.session.turns[state.next_turn]
@@ -356,17 +422,144 @@ class Simulation:
             self._insert(replica, state.session.id, tokens)
         self.metrics.replication_egress_bytes += kv_bytes(shipped, self.model)
 
+    def _replication_admits(self, now: float, node: NodeState, nbytes: int) -> bool:
+        """Charge `nbytes` to the node's write-through budget; False if dropped."""
+        budget = self.fleet.replication_bytes_per_s
+        if not budget:
+            return True
+        if node.replication_free_at - now > REPLICATION_MAX_QUEUE_S:
+            self.metrics.replication_drops += 1
+            return False
+        node.replication_free_at = max(now, node.replication_free_at) + nbytes / budget
+        return True
+
+    def _copy_capacity(self) -> int:
+        return self.fleet.replica_tokens or self.fleet.cache_tokens
+
+    def _replicate_in_flight(self, now: float, node: NodeState, state: SessionState,
+                             tokens: int) -> None:
+        """KevlarFlow-style: stream the running turn's KV to a peer in another group."""
+        self._release_in_flight_replica(state)
+        candidates = [n for n in self._live_nodes() if n.group != node.group and
+                      n.free_for_copies(self._copy_capacity()) >= tokens]
+        if not candidates:
+            self.metrics.replica_refusals += 1
+            return
+        peer = max(candidates, key=lambda n: n.free_for_copies(self._copy_capacity()))
+        if not self._replication_admits(now, node, kv_bytes(tokens, self.model)):
+            return
+        peer.inflight_replicas[state.session.id] = tokens
+        state.inflight_replica = peer.id
+        self.metrics.replication_egress_bytes += kv_bytes(tokens, self.model)
+
+    def _release_in_flight_replica(self, state: SessionState) -> None:
+        if state.inflight_replica is None:
+            return
+        peer = self.nodes.get(state.inflight_replica)
+        if peer is not None:
+            peer.inflight_replicas.pop(state.session.id, None)
+        state.inflight_replica = None
+
+    def _pool_nodes(self, session_id: str) -> list[NodeState]:
+        """Rendezvous hashing over live nodes: placement ignores failure domains."""
+        live = [n for n in self.nodes.values() if n.alive]
+        live.sort(key=lambda n: _stable_hash(f"{session_id}|{n.id}"))
+        return live[:self.fleet.pool_replicas]
+
+    def _pool_write(self, now: float, node: NodeState, state: SessionState,
+                    tokens: int) -> None:
+        capacity = self._copy_capacity()
+        for shard in self._pool_nodes(state.session.id):
+            shipped = max(0, tokens - shard.pool.get(state.session.id, 0))
+            remote = shard.id != node.id
+            if remote and not self._replication_admits(now, node,
+                                                       kv_bytes(shipped, self.model)):
+                continue
+            shard.pool.pop(state.session.id, None)
+            shard.pool[state.session.id] = tokens
+            while sum(shard.pool.values()) > capacity:
+                shard.pool.popitem(last=False)
+            if remote:
+                self.metrics.replication_egress_bytes += kv_bytes(shipped, self.model)
+
+    def _failover(self, session_id: str, now: float) -> NodeState | None:
+        if self.policy is Policy.POOL:
+            return self._pool_fetch(session_id, now)
+        return self._take_replica(session_id, now)
+
+    def _pool_fetch(self, session_id: str, now: float) -> NodeState | None:
+        """Restore from a surviving pool shard onto the least-loaded live node."""
+        state = self.sessions[session_id]
+        shards = [n for n in self.nodes.values() if n.alive and session_id in n.pool]
+        if not shards:
+            return None
+        held = max(n.pool[session_id] for n in shards)
+        target = self._pick_node()
+        self._insert(target, session_id, held)
+        state.lost_by_reclaim = False
+        if not any(n.id == target.id for n in shards):
+            state.available_at = now + transfer_s(held, self.model, self.link)
+        return target
+
+    # ------------------------------------------------------------- snapshots
+    def _on_snapshot(self, now: float) -> None:
+        for node in self.nodes.values():
+            if node.alive:
+                self.metrics.at_risk.append(self._value_at_risk(now, node, "periodic"))
+
+    def _value_at_risk(self, now: float, node: NodeState, reason: str) -> dict:
+        """What a reclaim of `node` right now would put at risk (characterization)."""
+        hot_tokens = idle_tokens = running_tokens = 0
+        hot_s = idle_s = expected_s = 0.0
+        for session_id, tokens in node.cache.items():
+            state = self.sessions[session_id]
+            cost = recompute_s(tokens, self.gpu)
+            returns = state.next_turn + (1 if session_id in node.in_flight else 0) < \
+                len(state.session.turns)
+            if returns:
+                expected_s += cost
+            if session_id in node.in_flight:
+                running_tokens += tokens
+            if session_id in node.in_flight or now - state.last_active < \
+                    self.fleet.hot_window_s:
+                hot_tokens += tokens
+                hot_s += cost
+            else:
+                idle_tokens += tokens
+                idle_s += cost
+        for session_id, (_, context, _) in node.in_flight.items():
+            if session_id not in node.cache:
+                hot_tokens += context
+                running_tokens += context
+                cost = recompute_s(context, self.gpu)
+                hot_s += cost
+                expected_s += cost
+        return {
+            "t_s": round(now, 1), "node": node.id, "reason": reason,
+            "in_flight": len(node.in_flight), "sessions": len(node.cache),
+            "hot_GB": round(kv_bytes(hot_tokens, self.model) / 1e9, 3),
+            "running_GB": round(kv_bytes(running_tokens, self.model) / 1e9, 3),
+            "idle_GB": round(kv_bytes(idle_tokens, self.model) / 1e9, 3),
+            "hot_recompute_s": round(hot_s, 2), "idle_recompute_s": round(idle_s, 2),
+            "returning_recompute_s": round(expected_s, 2),
+        }
+
     # ---------------------------------------------------------------- reclaims
     def _on_notice(self, now: float, reclaim: Reclaim) -> None:
         doomed = [self.nodes[n] for n in reclaim.nodes if self.nodes[n].alive]
         doomed_ids = {n.id for n in doomed}
         for node in doomed:
             self._push(now + reclaim.notice_s, "terminate", (node.id,))
+            self.metrics.at_risk.append(self._value_at_risk(now, node, "notice"))
+            for session_id in [*node.cache, *node.in_flight]:
+                if self.sessions[session_id].node == node.id:
+                    self.sessions[session_id].displaced = True
             resident = kv_bytes(node.used(), self.model)
             if resident:
                 self.metrics.budget_ratios.append(
                     reclaim.notice_s * self.link.bytes_per_s / resident)
-            if self.policy in (Policy.RECOMPUTE, Policy.REPLICATE):
+            if self.policy in (Policy.RECOMPUTE, Policy.REPLICATE, Policy.INFLIGHT_REPLICATE,
+                               Policy.POOL):
                 continue
             node.draining = True
             if self.policy in (Policy.EVACUATE, Policy.HYBRID):
@@ -424,6 +617,12 @@ class Simulation:
             return 1.0 if following < len(state.session.turns) else 0.0
         if model is ReuseModel.RECENCY:
             return recency_reuse_prob(0.0 if in_flight else now - state.last_active)
+        if model is ReuseModel.HINTED:
+            following = state.next_turn + 1 if in_flight else state.next_turn
+            return hinted_reuse_prob(returns=following < len(state.session.turns),
+                                     idle_s=0.0 if in_flight else now - state.last_active,
+                                     accuracy=self.fleet.hint_accuracy,
+                                     key=f"{session_id}|{state.next_turn}")
         return self.fleet.session_reuse_prob
 
     def _take_replica(self, session_id: str, now: float) -> NodeState | None:
@@ -481,11 +680,15 @@ class Simulation:
             if state.node == node_id:
                 state.lost_by_reclaim = True
                 state.node = None
-                replica = self._take_replica(session_id, now)
+                replica = self._failover(session_id, now)
                 if replica is not None:
                     state.node = replica.id
         node.cache.clear()
         node.replicas.clear()
+        node.pool.clear()
+        for held in list(node.inflight_replicas):
+            self.sessions[held].inflight_replica = None
+        node.inflight_replicas.clear()
         for session_id, (_, context, _output) in list(node.in_flight.items()):
             # Output-preserving restart (ShuntServe-style): re-prefill prompt+partial output.
             del node.in_flight[session_id]
@@ -493,14 +696,37 @@ class Simulation:
             state = self.sessions[session_id]
             state.lost_by_reclaim = True
             state.prefix_tokens = context
-            if state.node == node_id:
+            state.displaced = True
+            if not self._resume_from_in_flight_replica(state, context) and \
+                    state.node == node_id:
                 state.node = None  # else: its KV was evacuated; restart where it went
             self._push(now, "turn", (session_id, None))
         self._push(now + self.fleet.replacement_delay_s, "replace", (node.group,))
 
+    def _resume_from_in_flight_replica(self, state: SessionState, context: int) -> bool:
+        peer = self.nodes.get(state.inflight_replica) if state.inflight_replica else None
+        state.inflight_replica = None
+        if peer is None or not peer.alive or peer.draining:
+            return False
+        tokens = peer.inflight_replicas.pop(state.session.id, 0)
+        if tokens < context:
+            return False
+        self._insert(peer, state.session.id, context)
+        state.node = peer.id
+        state.lost_by_reclaim = False
+        return True
+
     def _on_replace(self, now: float, group: str) -> None:
         node_id = f"{group}-r{next(self._replacements)}"
         self.nodes[node_id] = NodeState(node_id, group)
+
+
+def _stable_hash(text: str) -> int:
+    """Process-independent hash (Python's str hash is salted per process)."""
+    value = 2166136261
+    for byte in text.encode():
+        value = ((value ^ byte) * 16777619) & 0xFFFFFFFF
+    return value
 
 
 def run(sessions: list[Session], reclaims: list[Reclaim], policy: Policy, **kwargs) -> Metrics:

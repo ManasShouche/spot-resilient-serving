@@ -1,0 +1,257 @@
+{
+ "8B on L40S, 4M-token cache": {
+  "snapshots": 1296,
+  "resident_GB": {
+   "mean": 390.79,
+   "p10": 204.63,
+   "p50": 440.6,
+   "p90": 512.65,
+   "max": 540.39
+  },
+  "idle_share_of_GB": {
+   "mean": 0.73,
+   "p10": 0.59,
+   "p50": 0.74,
+   "p90": 0.84,
+   "max": 0.98
+  },
+  "not_running_share_of_GB": {
+   "mean": 0.77,
+   "p10": 0.66,
+   "p50": 0.78,
+   "p90": 0.88,
+   "max": 0.98
+  },
+  "recompute_gpu_s_at_risk": {
+   "mean": 1086.9,
+   "p10": 518.35,
+   "p50": 1213.03,
+   "p90": 1486.95,
+   "max": 1793.83
+  },
+  "returning_recompute_gpu_s": {
+   "mean": 712.62,
+   "p10": 346.14,
+   "p50": 707.2,
+   "p90": 1094.18,
+   "max": 1470.39
+  },
+  "returning_share_of_gpu_s": {
+   "mean": 0.66,
+   "p10": 0.48,
+   "p50": 0.66,
+   "p90": 0.86,
+   "max": 1.0
+  },
+  "sessions_per_node": {
+   "mean": 22.23,
+   "p10": 13.0,
+   "p50": 24.0,
+   "p90": 29.0,
+   "max": 35.0
+  },
+  "in_flight_per_node": {
+   "mean": 6.03,
+   "p10": 3.0,
+   "p50": 6.0,
+   "p90": 9.0,
+   "max": 13.0
+  },
+  "rho": {
+   "10gbe, W=30s": {
+    "p50": 0.07,
+    "share_below_1": 1.0
+   },
+   "10gbe, W=120s": {
+    "p50": 0.27,
+    "share_below_1": 0.995
+   },
+   "25gbe, W=30s": {
+    "p50": 0.17,
+    "share_below_1": 0.999
+   },
+   "25gbe, W=120s": {
+    "p50": 0.68,
+    "share_below_1": 0.726
+   },
+   "object-store, W=30s": {
+    "p50": 0.05,
+    "share_below_1": 1.0
+   },
+   "object-store, W=120s": {
+    "p50": 0.22,
+    "share_below_1": 0.999
+   }
+  }
+ },
+ "8B on g6e.xlarge, 400k-token cache": {
+  "snapshots": 1236,
+  "resident_GB": {
+   "mean": 31.46,
+   "p10": 12.97,
+   "p50": 32.73,
+   "p90": 47.91,
+   "max": 72.24
+  },
+  "idle_share_of_GB": {
+   "mean": 0.7,
+   "p10": 0.0,
+   "p50": 0.97,
+   "p90": 1.0,
+   "max": 1.0
+  },
+  "not_running_share_of_GB": {
+   "mean": 0.76,
+   "p10": 0.0,
+   "p50": 1.0,
+   "p90": 1.0,
+   "max": 1.0
+  },
+  "recompute_gpu_s_at_risk": {
+   "mean": 83.81,
+   "p10": 23.4,
+   "p50": 86.27,
+   "p90": 138.12,
+   "max": 213.24
+  },
+  "returning_recompute_gpu_s": {
+   "mean": 60.29,
+   "p10": 0.0,
+   "p50": 54.49,
+   "p90": 126.57,
+   "max": 213.24
+  },
+  "returning_share_of_gpu_s": {
+   "mean": 0.75,
+   "p10": 0.0,
+   "p50": 1.0,
+   "p90": 1.0,
+   "max": 1.0
+  },
+  "sessions_per_node": {
+   "mean": 1.95,
+   "p10": 1.0,
+   "p50": 2.0,
+   "p90": 3.0,
+   "max": 5.0
+  },
+  "in_flight_per_node": {
+   "mean": 0.48,
+   "p10": 0.0,
+   "p50": 0.0,
+   "p90": 1.0,
+   "max": 4.0
+  },
+  "rho": {
+   "10gbe, W=30s": {
+    "p50": 0.92,
+    "share_below_1": 0.575
+   },
+   "10gbe, W=120s": {
+    "p50": 3.67,
+    "share_below_1": 0.0
+   },
+   "25gbe, W=30s": {
+    "p50": 2.29,
+    "share_below_1": 0.0
+   },
+   "25gbe, W=120s": {
+    "p50": 9.16,
+    "share_below_1": 0.0
+   },
+   "object-store, W=30s": {
+    "p50": 0.73,
+    "share_below_1": 0.727
+   },
+   "object-store, W=120s": {
+    "p50": 2.93,
+    "share_below_1": 0.0
+   }
+  }
+ },
+ "70B on 4xH100, 4M-token cache": {
+  "snapshots": 1296,
+  "resident_GB": {
+   "mean": 977.36,
+   "p10": 508.69,
+   "p50": 1094.95,
+   "p90": 1282.25,
+   "max": 1372.12
+  },
+  "idle_share_of_GB": {
+   "mean": 0.7,
+   "p10": 0.56,
+   "p50": 0.72,
+   "p90": 0.81,
+   "max": 0.92
+  },
+  "not_running_share_of_GB": {
+   "mean": 0.73,
+   "p10": 0.61,
+   "p50": 0.75,
+   "p90": 0.84,
+   "max": 0.95
+  },
+  "recompute_gpu_s_at_risk": {
+   "mean": 912.49,
+   "p10": 435.28,
+   "p50": 1020.71,
+   "p90": 1245.58,
+   "max": 1344.62
+  },
+  "returning_recompute_gpu_s": {
+   "mean": 611.97,
+   "p10": 308.67,
+   "p50": 607.58,
+   "p90": 922.99,
+   "max": 1192.76
+  },
+  "returning_share_of_gpu_s": {
+   "mean": 0.68,
+   "p10": 0.5,
+   "p50": 0.68,
+   "p90": 0.86,
+   "max": 1.0
+  },
+  "sessions_per_node": {
+   "mean": 22.42,
+   "p10": 13.0,
+   "p50": 24.0,
+   "p90": 30.0,
+   "max": 36.0
+  },
+  "in_flight_per_node": {
+   "mean": 6.7,
+   "p10": 4.0,
+   "p50": 7.0,
+   "p90": 9.0,
+   "max": 13.0
+  },
+  "rho": {
+   "10gbe, W=30s": {
+    "p50": 0.03,
+    "share_below_1": 1.0
+   },
+   "10gbe, W=120s": {
+    "p50": 0.11,
+    "share_below_1": 1.0
+   },
+   "25gbe, W=30s": {
+    "p50": 0.07,
+    "share_below_1": 1.0
+   },
+   "25gbe, W=120s": {
+    "p50": 0.27,
+    "share_below_1": 0.996
+   },
+   "object-store, W=30s": {
+    "p50": 0.02,
+    "share_below_1": 1.0
+   },
+   "object-store, W=120s": {
+    "p50": 0.09,
+    "share_below_1": 1.0
+   }
+  }
+ }
+}

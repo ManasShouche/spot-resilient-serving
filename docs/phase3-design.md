@@ -88,3 +88,47 @@ worthless if the head is lost.
   simulator. That lowers W·B, which the budget experiment shows matters most.
 - P2P peers in the same reclaim wave are unsafe destinations. The router and planner
   must know each peer's failure domain.
+
+## Prototype status (October 2026)
+
+Written against vLLM `34051ad`. **Ran on a real L40S under vLLM 0.31.0** (same tiering
+code) on 7 Oct 2026: deferred cascade, deadline flush and restore in a fresh process all
+work, and greedy outputs match a cold recompute. See
+[phase3-results.md](phase3-results.md).
+
+| Piece | Where | State |
+|---|---|---|
+| Deferred / hybrid cascade | `kvevac/vllm_plugin/manager.py`, `DeadlineTieringOffloadingManager.complete_store` | written |
+| Session index (keys per session, prefix positions, dirty/cascaded, evictions) | `kvevac/vllm_plugin/core.py`, `SessionIndex` | written, unit-tested |
+| `flush_for_deadline` | manager; planning in `core.plan_flush` (planner order, then `kvevac.flush` block order, cut at `tier_bytes_per_s × (deadline − now − 2 s)`) | planning unit-tested; submission path written |
+| Out-of-tree loading | `DeadlineTieringOffloadingSpec` via `spec_name` + `spec_module_path` (no vLLM fork) | written |
+| Notice → flush | `SpotNoticeHandler(flush_control=...)` writes the request atomically **before** pausing admission; the manager polls it in `on_schedule_end` and writes `<control>.status` | handler side tested against MockIMDS |
+
+Design decisions worth knowing:
+- **Agent sessions come from the request.** Clients pass
+  `kv_transfer_params={"kvevac_session_id": ...}`; vLLM carries it into `ReqContext`.
+  Without it, every request is its own session.
+- **The manager is adopted, not rebuilt.** `adopt()` swaps the class of the
+  `TieringOffloadingManager` that upstream's spec constructs, so the plugin doesn't copy
+  upstream's ~90 lines of tier construction, which change often.
+- **Flush completions piggyback on `_update_backpressure`**, which upstream calls for
+  every successful primary→secondary job. That is a private hook. If it moves, mark
+  cascaded keys from `_process_finished_jobs` instead.
+- **Upstream defaults to `offload_prompt_only=True`.** Decode-phase blocks are not
+  offloaded. For agent sessions this is fine, because each turn's output is part of the
+  next turn's prompt and is offloaded then.
+
+Open risks, to settle on the first GPU run:
+1. Does `on_schedule_end` run while the engine is paused with nothing in flight? If it
+   doesn't, the handler's `--wake-model` one-token request is the workaround. Measure the
+   delay between `flush_requested` and the plugin's `started_unix`.
+2. Do the obj/p2p tiers accept store jobs under a synthetic `ReqContext` that never
+   went through the scheduler? The manager calls `tier.on_new_request` and
+   `on_request_finished` around the flush for this reason.
+3. GPU-only blocks of running requests are not flushed (see the manager's docstring).
+
+First GPU test (two g6e.xlarge, on-demand quota allows it): node A runs `deferred` with
+an obj tier and `--flush-control`; a session builds an 80k-token context; trigger
+`MockIMDS` (or FIS) on A; send the session's next turn to node B with the same tier and
+check (1) TTFT vs. a cold prefill, (2) greedy-decoding output parity with an
+uninterrupted run, (3) the `.status` report against `tier_bytes_per_s`.

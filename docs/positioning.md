@@ -143,7 +143,7 @@ The "real AgentX trace replay" item is blocked, but three alternatives are publi
 the agentic-kv-cache traces (Claude Code, Apache-2.0, `make data`, about 1.1 GB),
 the Codex / SWE-bench Pro traces released with the vLLM Mooncake post (610 traces,
 median 33 turns, inter-turn delay 5.2 s median and 81.4 s P99), and the CacheWise
-coding traces (GitHub). HuggingFace is blocked from cloud sessions; check GitHub
+coding traces (GitHub). If HuggingFace is unreachable, check the GitHub mirrors
 first.
 
 Inter-turn gaps of a few seconds also change the model. Most sessions are *hot*, so
@@ -214,3 +214,33 @@ the SOP says why each happened.
 - vLLM RFC #24256: github.com/vllm-project/vllm/issues/24256
 - vLLM blog, "Serving Agentic Workloads at Scale with vLLM x Mooncake" (2026-05-06)
 - vLLM blog, "vLLM x AgentX" (2026-09-08)
+
+## 7. Novelty check, 7 October 2026 (closes the open item in section 3)
+
+Targeted searches for any work that preserves *idle session / prefix KV* when a node
+is about to be lost:
+
+| Work | What it does | Node loss / notice? |
+|---|---|---|
+| CacheScout (arXiv 2608.14624, Jul 2026; vLLM) | Learns agent execution transitions online; uses them for eviction and prefetch. +10–18 pt hit rate, −18–45% mean TTFT. | No. Eviction under memory pressure on a live node. |
+| TraceLab (arXiv 2606.30560) | Characterizes coding-agent workloads across providers: long loops, long contexts with short outputs, heavy-tailed tool calls, idle gaps. | No. Calls for "KV-cache management around human-paced gaps". That is our idle asset, but against eviction, not loss. |
+| Continuum / CacheTTL (arXiv 2511.02230) | Pins KV for a TTL across tool calls. | No. |
+| llm-d graceful shutdown (docs, v0.9) | On pod termination, stops routing and lets in-flight requests finish within `--shutdown-timeout`. | Drains in-flight requests only. Cached prefixes are not moved, and spot notices aren't mentioned. |
+| llm-d P2P KV sharing (blog) | A consumer pulls prefix blocks from a peer's CPU offload tier over NIXL when the measured crossover favours it (GPT-OSS-120B on H200: pull wins below 2K tokens; GLM-5.2: break-even about 8.7K). | Assumes the peer stays alive. Nothing about peer loss. |
+
+**Conclusion.** The intersection is still empty: *idle agent-session KV, protected
+against node loss, using the termination notice as a budget*. Two of these results
+also help the argument:
+- llm-d's P2P pull is the **restore path** our evacuation needs. Blocks evacuated to a
+  surviving peer's CPU tier are found by hash and pulled. It also sharpens the threat:
+  a fleet that relies on P2P reuse loses every prefix held on a reclaimed peer.
+- TraceLab and CacheScout show that the idle-gap asset is real and valuable. They
+  defend it against eviction, and we defend it against reclaim. Cite both as
+  complementary, and use CacheScout or Continuum as the reuse estimator rather than
+  claiming one (section 4.4; `ReuseModel.HINTED` sweeps how much accuracy matters).
+
+Sources: [CacheScout](https://arxiv.org/abs/2608.14624),
+[TraceLab](https://arxiv.org/pdf/2606.30560),
+[Continuum](https://arxiv.org/html/2511.02230v5),
+[llm-d graceful shutdown](https://llm-d.ai/docs/dev/operations/graceful-shutdown),
+[llm-d P2P KV sharing](https://llm-d.ai/blog/p2p-kv-cache-sharing-llm-d).

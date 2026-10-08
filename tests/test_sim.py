@@ -125,3 +125,42 @@ def test_ingress_slowdown_charges_receivers_of_evacuated_kv(workload) -> None:
     slowed = run(workload, events, Policy.EVACUATE,
                  fleet=FleetConfig(ingress_slowdown=1.0), **KW)
     assert slowed.prefill_gpu_s > free.prefill_gpu_s
+
+
+def test_inflight_replication_saves_killed_turns_but_not_idle_sessions(workload) -> None:
+    events = reclaims(0.0)
+    fleet = FleetConfig(replica_tokens=2_000_000)
+    base = run(workload, [], Policy.RECOMPUTE, fleet=fleet, **KW).prefill_gpu_s
+    recompute = run(workload, events, Policy.RECOMPUTE, fleet=fleet, **KW)
+    inflight = run(workload, events, Policy.INFLIGHT_REPLICATE, fleet=fleet, **KW)
+    assert inflight.replication_egress_bytes > 0
+    # Still loses idle session caches, so it cannot remove all of the excess.
+    assert 0 < inflight.prefill_gpu_s - base <= recompute.prefill_gpu_s - base
+
+
+def test_pool_copies_survive_reclaims_of_other_nodes(workload) -> None:
+    events = reclaims(0.0)
+    one = FleetConfig(replica_tokens=2_000_000, pool_replicas=1)
+    two = FleetConfig(replica_tokens=2_000_000, pool_replicas=2)
+    base = run(workload, [], Policy.RECOMPUTE, fleet=one, **KW).prefill_gpu_s
+    recompute = run(workload, events, Policy.RECOMPUTE, fleet=one, **KW).prefill_gpu_s - base
+    pool1 = run(workload, events, Policy.POOL, fleet=one, **KW)
+    pool2 = run(workload, events, Policy.POOL, fleet=two, **KW)
+    assert pool1.prefill_gpu_s - base < recompute
+    assert pool2.replication_egress_bytes > pool1.replication_egress_bytes
+
+
+def test_displaced_turns_are_recorded(workload) -> None:
+    metrics = run(workload, reclaims(30.0), Policy.EVACUATE, fleet=FLEET, **KW)
+    assert metrics.displaced_ttft_s and metrics.summary()["displaced_turns"] > 0
+
+
+def test_value_at_risk_snapshots_split_hot_and_idle(workload) -> None:
+    from kvevac.sim import Simulation
+    sim = Simulation(workload, [], policy=Policy.RECOMPUTE, fleet=FLEET,
+                     snapshot_every_s=600.0, **KW)
+    metrics = sim.run()
+    assert metrics.at_risk
+    assert any(r["idle_GB"] > 0 for r in metrics.at_risk)
+    assert all(r["returning_recompute_s"] <= r["hot_recompute_s"] + r["idle_recompute_s"]
+               + 1e-6 for r in metrics.at_risk)

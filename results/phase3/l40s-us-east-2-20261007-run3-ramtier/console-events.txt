@@ -1,0 +1,10 @@
+  instance | boot: self-terminate in 60 min; model NousResearch/Meta-Llama-3.1-8B-Instruct
+  instance | install: uv + vllm
+  instance | watching 
+  instance | env: GPU NVIDIA L40S
+  instance | phase3: tier on /mnt/ram
+  instance | phase3: tier write bandwidth 2.18 GB/s
+  instance | phase3: starting A (deferred) on :8001
+  instance | phase3: A healthy
+  instance | phase3: turn 1 s-long: 40052 tokens, TTFT 5.3425 s
+  instance | phase3: turn 1 s-short: 14294 tokens, TTFT 1.3378 s

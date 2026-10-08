@@ -1,0 +1,63 @@
+  instance | boot: self-terminate in 60 min; model NousResearch/Meta-Llama-3.1-8B-Instruct
+  instance | install: uv + vllm
+  instance | env: GPU NVIDIA L40S
+  instance | mem: used 0G avail 29G shm 0
+  instance | mem: used 0G avail 29G shm 0
+  instance | phase3: nfs client ready; mounting 172.31.47.8
+  instance | phase3: tier on /mnt/peer
+  instance | phase3: tier write bandwidth 1.30 GB/s
+  instance | phase3: starting A (deferred) on :8001
+  instance | mem: used 0G avail 29G shm 0
+  instance | mem: used 3G avail 26G shm 12K
+  instance | mem: used 7G avail 23G shm 4.0K
+  instance | mem: used 7G avail 23G shm 4.0K
+  instance | mem: used 4G avail 25G shm 4.0K
+  instance | mem: used 3G avail 26G shm 4.0K
+  instance | mem: used 3G avail 26G shm 4.0K
+  instance | mem: used 4G avail 12G shm 15G
+  instance | mem: used 4G avail 11G shm 15G
+  instance | phase3: A healthy
+  instance | phase3: turn 1 s-long: 57204 tokens, TTFT 8.7784 s
+  instance | phase3: turn 1 s-short: 20422 tokens, TTFT 2.056 s
+  instance | mem: used 4G avail 11G shm 15G
+  instance | phase3: flush report: {'seq': 1, 'started_unix': 1791443446.5717165, 'sessions_planned': ['s-long', 's-short'], 'complete_sessions': ['s-long', 's-short'], 'partial_sessions': {}, 'skipped_sessions': [], 'key
+  instance | phase3: starting B (write_through) on :8002
+  instance | mem: used 1G avail 29G shm 0
+  instance | mem: used 3G avail 26G shm 0
+  instance | mem: used 3G avail 27G shm 4.0K
+  instance | mem: used 3G avail 27G shm 4.0K
+  instance | mem: used 3G avail 27G shm 4.0K
+  instance | mem: used 3G avail 27G shm 4.0K
+  instance | mem: used 3G avail 27G shm 4.0K
+  instance | mem: used 3G avail 27G shm 4.0K
+  instance | mem: used 3G avail 27G shm 4.0K
+  instance | mem: used 3G avail 27G shm 4.0K
+  instance | mem: used 3G avail 27G shm 4.0K
+  instance | mem: used 3G avail 27G shm 4.0K
+  instance | mem: used 3G avail 27G shm 4.0K
+  instance | mem: used 3G avail 12G shm 15G
+  instance | phase3: B healthy
+  instance | phase3: turn 2 restored s-long: 58784 tokens, TTFT 8.309 s
+  instance | phase3: turn 2 restored s-short: 22000 tokens, TTFT 2.9411 s
+  instance | phase3: starting C (write_through) on :8003
+  instance | mem: used 1G avail 28G shm 0
+  instance | mem: used 3G avail 27G shm 4.0K
+  instance | mem: used 3G avail 27G shm 4.0K
+  instance | mem: used 3G avail 27G shm 4.0K
+  instance | mem: used 3G avail 27G shm 4.0K
+  instance | mem: used 3G avail 27G shm 4.0K
+  instance | mem: used 3G avail 27G shm 4.0K
+  instance | mem: used 3G avail 27G shm 4.0K
+  instance | mem: used 3G avail 27G shm 4.0K
+  instance | mem: used 3G avail 27G shm 4.0K
+  instance | mem: used 3G avail 27G shm 4.0K
+  instance | mem: used 3G avail 27G shm 4.0K
+  instance | mem: used 3G avail 13G shm 14G
+  instance | phase3: C healthy
+  instance | mem: used 4G avail 11G shm 15G
+  instance | phase3: turn 2 cold s-long: 58784 tokens, TTFT 9.1132 s
+  instance | phase3: turn 2 cold s-short: 22000 tokens, TTFT 2.3891 s
+  instance | phase3: parity {'s-long': True, 's-short': True}, TTFT speedup {'s-long': 1.1, 's-short': 0.81}
+  instance | done: phase3 test complete
+  instance | finished: status 0; sending results
+  instance | mem: used 1G avail 29G shm 0
