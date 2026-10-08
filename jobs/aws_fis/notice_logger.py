@@ -3,8 +3,10 @@
 
 Writes one line per event to the serial console, prefixed `KVEVAC `, so results can be
 read with `aws ec2 get-console-output` without giving the instance any credentials.
-A heartbeat every second brackets the real termination time (the last heartbeat
-seen before the instance disappears).
+IMDS is polled every second. Heartbeats go out every 60 s while nothing has happened,
+then every second once a spot signal (rebalance or interruption) arrives, so the last
+heartbeat before the instance disappears brackets the real termination time without
+flooding the console during the wait.
 """
 import json
 import os
@@ -16,6 +18,9 @@ from datetime import datetime, timezone
 IMDS = os.environ.get("KVEVAC_IMDS", "http://169.254.169.254")  # override only for tests
 PATHS = {"rebalance": "/latest/meta-data/events/recommendations/rebalance",
          "interruption": "/latest/meta-data/spot/instance-action"}
+POLL_S = 1.0
+IDLE_BEAT_S = 60.0  # heartbeat interval before any spot signal
+ALERT_BEAT_S = 1.0  # heartbeat interval once a signal has arrived
 
 
 def emit(event, **fields):
@@ -48,7 +53,7 @@ def get(path, tok):
 
 def main():
     emit("watching")
-    tok, tok_at, seen, beat = token(), time.monotonic(), set(), 0
+    tok, tok_at, seen, beat, beat_at = token(), time.monotonic(), set(), 0, None
     while True:
         if time.monotonic() - tok_at > 3600:
             tok, tok_at = token(), time.monotonic()
@@ -63,9 +68,11 @@ def main():
             if body:
                 seen.add(name)
                 emit(name, body=body)
-        beat += 1
-        emit("heartbeat", n=beat)
-        time.sleep(1.0)
+        interval = ALERT_BEAT_S if seen else IDLE_BEAT_S
+        if beat_at is None or time.monotonic() - beat_at >= interval:
+            beat, beat_at = beat + 1, time.monotonic()
+            emit("heartbeat", n=beat)
+        time.sleep(POLL_S)
 
 
 if __name__ == "__main__":
