@@ -24,7 +24,7 @@ console (`get-console-output`) as numbered, SHA-256-checked chunks.
 
 ### Permissions
 CloudShell runs as your console identity, which normally has what it needs. To run with
-a narrower IAM user instead (for example the `kvevac` user Claude uses), attach
+a narrower IAM user instead (for example a dedicated `kvevac` user), attach
 `jobs/aws/iam-policy.json` to it as an inline policy. It allows launching only
 `g6e.xlarge`, terminating only instances tagged `project=kvevac-aws`, the FIS calls, and
 creating and passing only the `kvevac-fis` role.
@@ -154,7 +154,7 @@ model download.
 - **Destroy the instance in the Vast console when the branch appears.** The job
   tries to destroy itself, but that depends on Vast-injected credentials that have
   not been verified, and storage bills until the instance is deleted.
-- Tell Claude the branch name. Next steps are `python -m kvevac.experiments all
+- Next steps, once the branch appears, are `python -m kvevac.experiments all
   --calibration <prefill.json-derived file>`, plus setting `ingress_slowdown` from
   the interference results.
 
@@ -169,7 +169,7 @@ download, CUDA, and Vast's environment variables.
 ## Job B: spot-notice timing with AWS FIS
 
 Needs the AWS CLI with credentials for your account (run from your own machine or
-CloudShell; this Claude session's AWS credentials do not currently work).
+CloudShell).
 
 ```bash
 REGION=us-east-1

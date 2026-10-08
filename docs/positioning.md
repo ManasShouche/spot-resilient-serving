@@ -143,7 +143,7 @@ The "real AgentX trace replay" item is blocked, but three alternatives are publi
 the agentic-kv-cache traces (Claude Code, Apache-2.0, `make data`, about 1.1 GB),
 the Codex / SWE-bench Pro traces released with the vLLM Mooncake post (610 traces,
 median 33 turns, inter-turn delay 5.2 s median and 81.4 s P99), and the CacheWise
-coding traces (GitHub). HuggingFace is blocked from cloud sessions; check GitHub
+coding traces (GitHub). If HuggingFace is unreachable, check the GitHub mirrors
 first.
 
 Inter-turn gaps of a few seconds also change the model. Most sessions are *hot*, so
