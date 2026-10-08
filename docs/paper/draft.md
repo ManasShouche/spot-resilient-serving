@@ -17,12 +17,14 @@ session caches to save, and where, under a deadline, bandwidth and failure domai
 
 In simulation calibrated on an NVIDIA L40S, on-notice evacuation recovers 47–52% of
 reclaim-induced recompute at a 2-minute notice with zero steady-state cost, within
-5–10 points of continuous replication (C). At equal memory it beats replication, which
-does worse than doing nothing (S). We implement the policy as an out-of-tree plugin for
-vLLM's tiered KV offloading. On two AWS nodes it evacuates 10.2 GB of session KV to a
-peer's DRAM in 6.6 s and restores it with output identical to recomputation. Restore
-beats recompute only for long contexts (8.3 s vs 9.1 s TTFT at 59k tokens) (M), which
-makes 8B-on-L40S a crossover point rather than a win.
+5–10 points of continuous replication (C). When replication's DRAM is instead given
+to the primary cache (equal memory), evacuation still recovers about half, while
+replication does worse than doing nothing (S). We implement the policy as an
+out-of-tree plugin for vLLM's tiered KV offloading. On AWS it evacuates 10.2 GB of
+session KV from an L40S node to a CPU memory node's DRAM (served over NFS) in 6.6 s, and
+restores it with greedy output identical to recomputation (M). Restore and recompute
+are at parity for 8B on L40S: 8.3 s vs 9.1 s TTFT at 59k tokens and 2.9 s vs 2.4 s at
+22k, single runs (M). We report this as a crossover, not a win.
 
 ## 1. Introduction
 
@@ -48,7 +50,9 @@ KVFlow) do manage idle prefixes, but against *eviction* on a live node, not node
 3. *A regime map* (§5): when evacuation matches continuous replication, when it beats
    it (equal memory, shared-store bandwidth), and when it cannot help (W = 0).
 4. *A vLLM prototype* (§6), out of tree, with deferred cascades and a deadline flush,
-   evaluated on real GPUs including a two-node peer-DRAM setup with output parity.
+   evaluated on a real L40S, flushing to local NVMe and to a separate CPU memory node
+   over the network, with output parity. The hardware runs exercise the mechanism; the
+   planner's choices under a tight budget are evaluated only in simulation.
 
 **Not claimed.** Predicting preemption (Parcae, SkyNomad, hazardserve); exploiting
 correlated preemption (SkyServe); that KV transfer generally beats recompute
@@ -133,7 +137,10 @@ Paired seeds, 95% t-intervals of ±5–40 points.
 **Where evacuation wins** (S, synthetic sessions, `results/phase1b/`):
 - *Equal memory.* If the DRAM write-through would spend on replicas goes to the
   primary cache instead, evacuation reaches −50% (independent) and −46% (correlated)
-  at W = 120 s, while write-through *worsens* reclaim cost by +84% to +94%.
+  at W = 120 s, while write-through *worsens* reclaim cost by +84% to +94%, because
+  halving the primary cache costs more in steady-state misses than replicas save at
+  reclaim. This holds only under that memory constraint; with spare DRAM (table above)
+  write-through is the strongest single policy.
 - *A shared store.* With one ~1 GB/s store shared by 12 nodes (83 MB/s each),
   write-through drops bursts and falls to −25%. Evacuation holds −43% and hybrid −51%.
 
@@ -160,16 +167,34 @@ process restores turn 2 from the tier; another computes it cold.
 | tier | flush (10.17 GB) | projected | parity | TTFT restored / cold, 59k | 22k |
 |---|---|---|---|---|---|
 | local NVMe | 49.2 s | 46.5 s | ✓ | 19.4 / 9.3 s | 6.6 / 2.4 s |
-| **peer DRAM over the network** (two nodes) | **6.6 s** | 7.8 s | ✓ | **8.3 / 9.1 s** | 2.9 / 2.4 s |
+| CPU memory node's DRAM over NFS (two nodes) | **6.6 s** | 7.8 s | ✓ | 8.3 / 9.1 s | 2.9 / 2.4 s |
+
+The two-node setup is a stand-in for a surviving peer: the destination is an
+r7i.xlarge CPU instance exporting 20 GB of RAM over NFS (`nconnect=8`) in the same
+zone, not a second GPU server, and NFS into vLLM's CPU tier is not the restore path a
+production system would use.
 
 Deferred mode left the tier empty until the notice in every run. The planner's flush
-projection was within 6–15%. Restored KV decoded identically to recomputed KV. Whether
-restore *beats* recompute depends on the restore path. On local NVMe (~0.4 GB/s) it
-loses by 2–3×. From a peer's DRAM (~0.9 GB/s end to end, limited by vLLM's promotion
-pipeline rather than the 1.3–1.5 GB/s network) it wins narrowly at 59k tokens and loses
-at 22k. For 8B on L40S, recompute costs the equivalent of ~0.83 GB/s of KV, so this is
-the crossover. Larger models move it decisively: a 70B model has 2.5× the KV per token
-but about 8.75× the prefill compute.
+projection was within 6–15%. Restored KV decoded identically to recomputed KV under
+greedy decoding; the prompts are random words and the outputs repetitive, so this
+checks KV correctness, not answer quality.
+
+**The planner had nothing to decide.** Both sessions fit in 6.6 s of a 120 s notice
+(ρ ≫ 1), so every run saved everything. These runs validate the flush mechanism and
+the planner's time projection, not its choices; the value of planning when ρ < 1
+rests on the simulation in §5. A hardware test of that needs a larger node, a
+throttled link, or a 15–30 s notice.
+
+**Restore vs. recompute.** On local NVMe (~0.4 GB/s end to end) restore loses by
+2–3×. From the memory node (~0.9 GB/s end to end, limited by vLLM's promotion pipeline
+rather than the 1.3–1.5 GB/s network) it is 9% faster at 59k tokens and 23% slower at
+22k. Each figure is a single run. Cold TTFT for the same 59k prompt was 9.33 s and
+9.11 s on two different instances, so run-to-run spread is a few percent and the 59k
+gap is suggestive, not established; we call it parity. This agrees with the arithmetic:
+for 8B on L40S, recompute costs the equivalent of ~0.83 GB/s of KV, close to the
+measured restore rate. We expect larger models to favour restore, since a 70B model
+has 2.5× the KV per token but about 8.75× the prefill compute, but this is reasoning,
+not measurement.
 
 ## 7. Discussion and limitations
 
@@ -179,21 +204,25 @@ but about 8.75× the prefill compute.
 - **No real reclaim yet.** Spot g6e capacity was unavailable throughout (placement
   score 1/10 in three US regions), so FIS notice timing is unmeasured and the GPU tests
   emulate the reclaim with SIGKILL.
+- **The planner is untested on hardware.** No GPU run had ρ < 1 (§6).
+- **Single runs.** The GPU timings have no repeats or error bars.
 - **Small models are the hard case for restore.** The prototype's GPU results are for
   8B. The value of saving KV, and the crossover, should be measured at 70B on
   multi-GPU nodes, where both the at-risk KV and the recompute cost are an order of
   magnitude larger.
-- **Restore path.** NFS into vLLM's CPU tier is a stand-in. NIXL P2P into GPU memory
-  would remove the promotion bottleneck.
+- **Restore path.** The "peer" was a CPU memory node serving RAM over NFS into vLLM's
+  CPU tier. A surviving GPU peer reached by NIXL P2P into GPU memory would remove the
+  promotion bottleneck, and is unmeasured.
 
 ## 8. Conclusion
 
 In agentic serving, most of the state a spot reclaim destroys is idle session KV that
 no existing fault-tolerance mechanism protects. The termination notice is enough to
 move it: 10 GB in under 7 s on commodity cloud networking, planned against the
-deadline, and restored bit-exactly. Whether moving it *pays* is a crossover in model
-size, context length and restore bandwidth, and we map that crossover rather than
-claim a universal win.
+deadline, and restored with output identical to recomputation. Whether moving it
+*pays* is a crossover in model size, context length and restore bandwidth. For 8B on
+an L40S we measured parity; the larger-model side of the crossover is the next
+measurement, not a result.
 
 ## Artifacts
 Code, results and the AWS harness: `kvevac/`, `results/`, `jobs/aws/`. Reproduction
