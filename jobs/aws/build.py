@@ -71,7 +71,13 @@ def _strip_docstrings(source: str) -> str:
                                            and isinstance(n.value, ast.Constant)
                                            and isinstance(n.value.value, str))]
             node.body = kept or [ast.Pass()]
-    return ast.unparse(tree) + "\n"
+    # One space per indent level: ast.unparse indents with four and writes every string
+    # literal on one line, so leading spaces are only ever indentation.
+    lines = []
+    for line in ast.unparse(tree).splitlines():
+        stripped = line.lstrip(" ")
+        lines.append(" " * ((len(line) - len(stripped)) // 4) + stripped)
+    return "\n".join(lines) + "\n"
 
 
 def user_data(files: dict[str, str] = INSTANCE_FILES, strip: bool = False) -> str:
@@ -114,10 +120,11 @@ def build() -> tuple[str, int]:
     data = user_data()
     phase3 = user_data(PHASE3_FILES, strip=True)
     size = len(_gzip(data.encode()))
-    # The runner prepends a few `export` lines, so leave headroom.
+    # The runner prepends a few `export` lines (about 200 bytes once gzipped), so leave
+    # headroom; driver.sh checks the real size again before launching.
     for name, blob in (("calibration", data), ("phase3", phase3)):
         packed = len(_gzip(blob.encode()))
-        if packed > USER_DATA_LIMIT - 1024:
+        if packed > USER_DATA_LIMIT - 384:
             raise SystemExit(f"gzipped {name} user-data is {packed} bytes; "
                              f"EC2 allows {USER_DATA_LIMIT}")
     replacements = {

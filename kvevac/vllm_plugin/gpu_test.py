@@ -118,7 +118,8 @@ def write_bandwidth(tier: Path, gb: int = 4) -> float:
 
 class Server:
     def __init__(self, name: str, port: int, args: argparse.Namespace, tier: Path,
-                 mode: str, control: Path | None, tier_bps: float) -> None:
+                 mode: str, control: Path | None, tier_bps: float, *,
+                 extra: dict | None = None, max_model_len: int = MAX_MODEL_LEN) -> None:
         cfg = {
             "kv_connector": "OffloadingConnector", "kv_role": "kv_both",
             "kv_connector_extra_config": {
@@ -127,11 +128,12 @@ class Server:
                 "cpu_bytes_to_use": int(args.cpu_gb * 2**30),
                 "secondary_tiers": [{"type": "fs", "root_dir": str(tier)}],
                 "kvevac": {"cascade_mode": mode, "tier_bytes_per_s": tier_bps,
-                           **({"control_path": str(control)} if control else {})},
+                           **({"control_path": str(control)} if control else {}),
+                           **(extra or {})},
             },
         }
         cmd = [args.python, "-m", "vllm.entrypoints.openai.api_server", "--model",
-               args.model, "--port", str(port), "--max-model-len", str(MAX_MODEL_LEN),
+               args.model, "--port", str(port), "--max-model-len", str(max_model_len),
                "--gpu-memory-utilization", "0.85", "--kv-transfer-config", json.dumps(cfg)]
         env = {**os.environ, "PYTHONHASHSEED": "0", "VLLM_USE_FLASHINFER_SAMPLER": "0"}
         self.name, self.port = name, port

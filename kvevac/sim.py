@@ -254,8 +254,11 @@ class Simulation:
                  fleet: FleetConfig, model: ModelProfile, gpu: GpuProfile,
                  link: LinkProfile, store: LinkProfile | None = None,
                  snapshot_every_s: float | None = None,
-                 snapshot_until_s: float | None = None) -> None:
+                 snapshot_until_s: float | None = None,
+                 snapshot_sessions: bool = False) -> None:
         self.policy = policy
+        self.snapshot_sessions = snapshot_sessions
+        """Also list each resident session in value-at-risk snapshots (planner trials)."""
         self.fleet = fleet
         self.model, self.gpu, self.link, self.store = model, gpu, link, store
         self.metrics = Metrics(nodes=len(fleet.groups) * fleet.nodes_per_group)
@@ -511,11 +514,16 @@ class Simulation:
         """What a reclaim of `node` right now would put at risk (characterization)."""
         hot_tokens = idle_tokens = running_tokens = 0
         hot_s = idle_s = expected_s = 0.0
+        detail: list[dict] = []
         for session_id, tokens in node.cache.items():
             state = self.sessions[session_id]
             cost = recompute_s(tokens, self.gpu)
             returns = state.next_turn + (1 if session_id in node.in_flight else 0) < \
                 len(state.session.turns)
+            if self.snapshot_sessions:
+                detail.append({"id": session_id, "tokens": tokens, "returns": returns,
+                               "in_flight": session_id in node.in_flight,
+                               "idle_s": round(now - state.last_active, 1)})
             if returns:
                 expected_s += cost
             if session_id in node.in_flight:
@@ -542,6 +550,7 @@ class Simulation:
             "idle_GB": round(kv_bytes(idle_tokens, self.model) / 1e9, 3),
             "hot_recompute_s": round(hot_s, 2), "idle_recompute_s": round(idle_s, 2),
             "returning_recompute_s": round(expected_s, 2),
+            **({"detail": detail} if self.snapshot_sessions else {}),
         }
 
     # ---------------------------------------------------------------- reclaims

@@ -42,7 +42,7 @@ RUNS="${KVEVAC_RUNS:-$HOME/kvevac-runs}"
 AMI_PARAM="${AMI_PARAM:-/aws/service/deeplearning/ami/x86_64/base-oss-nvidia-driver-gpu-ubuntu-22.04/latest/ami-id}"
 FIS_ROLE="${FIS_ROLE:-kvevac-fis}"
 TAG=kvevac-aws
-PASS_THROUGH="MODEL MAX_MODEL_LEN VLLM_SPEC PREFILL_CONTEXTS PREFILL_REPEATS INTERFERENCE_REPEATS INTERFERENCE_CONTEXT KVEVAC_RESEND_S KVEVAC_JOB PHASE3_TIER PHASE3_RAM_GB PHASE3_CPU_GB PHASE3_SCALE PEER_IP"
+PASS_THROUGH="MODEL MAX_MODEL_LEN VLLM_SPEC PREFILL_CONTEXTS PREFILL_REPEATS INTERFERENCE_REPEATS INTERFERENCE_CONTEXT KVEVAC_RESEND_S KVEVAC_JOB PHASE3_TIER PHASE3_RAM_GB PHASE3_CPU_GB PHASE3_SCALE PEER_IP PLANNER_RUN_MIN"
 
 say() { printf '[%s] %s\n' "$(date -u +%H:%M:%S)" "$*"; }
 die() { say "ERROR: $*"; exit 1; }
@@ -160,7 +160,7 @@ make_user_data() {
     for name in $PASS_THROUGH; do
       if [ -n "${!name:-}" ]; then printf 'export %s=%q\n' "$name" "${!name}"; fi
     done
-    if [ "${KVEVAC_JOB:-calibrate}" = phase3 ]; then
+    if [ "${KVEVAC_JOB:-calibrate}" = phase3 ] || [ "${KVEVAC_JOB:-}" = planner ]; then
       echo "$USERDATA_PHASE3_GZ_B64" | base64 -d | gunzip
     else
       echo "$USERDATA_GZ_B64" | base64 -d | gunzip

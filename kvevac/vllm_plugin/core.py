@@ -23,12 +23,13 @@ import json
 import os
 import time
 from collections.abc import Hashable, Iterable
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from enum import StrEnum
 from pathlib import Path
 
+from kvevac.costmodel import transfer_s
 from kvevac.flush import FlushOrder, flush_order
-from kvevac.planner import Action, Destination, KVObject, plan_evacuation
+from kvevac.planner import Action, Destination, KVObject, plan_evacuation, save_value_s
 from kvevac.profiles import GPUS, GpuProfile, LinkProfile, ModelProfile
 from kvevac.reuse import recency_reuse_prob
 
@@ -89,6 +90,14 @@ class SessionIndex:
             self.cascaded.add(key)
             self.dirty.discard(key)
 
+    def uncascade(self, session_ids: Iterable[str]) -> None:
+        """The tier lost these sessions' blocks (emptied on purpose): ship them again."""
+        for sid in session_ids:
+            chain = self.sessions.get(sid)
+            if chain:
+                self.cascaded.difference_update(chain.keys)
+                self.dirty.update(chain.keys)
+
     def forget(self, keys: Iterable[Hashable]) -> None:
         """Keys evicted from the primary tier can no longer be flushed."""
         gone = set(keys)
@@ -107,6 +116,16 @@ class FlushRequest:
     sessions: list[str] | None = None
     """Priority order chosen by the caller, or None to let plan_flush decide."""
     tier: int = 0
+    only: list[str] | None = None
+    """Restrict the flush to these sessions (None: every session the index knows)."""
+    idle_s: dict[str, float] | None = None
+    """Per-session idle time to plan with instead of the index's own clock. Lets a test
+    replay a trace snapshot whose sessions were all prefilled moments ago."""
+    tier_bytes_per_s: float | None = None
+    """Write rate to plan with for this flush, if the link changed since startup."""
+    reset: bool = False
+    """Forget that the `only` sessions' blocks were already shipped (the caller emptied
+    the tier), so the same resident KV can be flushed again under another policy."""
 
 
 @dataclass
@@ -123,6 +142,10 @@ class FlushReport:
     already_in_tier: int
     finished_unix: float | None = None
     keys_confirmed: int = 0
+    segments: list[list] = field(default_factory=list)
+    """[session, keys] runs in submission order, after dropping non-resident keys."""
+    jobs_done: list[list] = field(default_factory=list)
+    """[unix time, keys] for each flush store job as it was confirmed."""
 
 
 def write_flush_request(path: Path, request: FlushRequest) -> None:
@@ -139,8 +162,14 @@ def read_flush_request(path: Path, last_seq: int) -> FlushRequest | None:
         return None
     if int(raw.get("seq", 0)) <= last_seq:
         return None
+    idle = raw.get("idle_s")
     return FlushRequest(seq=int(raw["seq"]), deadline_unix=float(raw["deadline_unix"]),
-                        sessions=raw.get("sessions"), tier=int(raw.get("tier", 0)))
+                        sessions=raw.get("sessions"), tier=int(raw.get("tier", 0)),
+                        only=raw.get("only"),
+                        idle_s={str(k): float(v) for k, v in idle.items()} if idle else None,
+                        tier_bytes_per_s=float(raw["tier_bytes_per_s"])
+                        if raw.get("tier_bytes_per_s") else None,
+                        reset=bool(raw.get("reset", False)))
 
 
 def write_report(path: Path, report: FlushReport) -> None:
@@ -159,6 +188,8 @@ class FlushParams:
     """Sustained write bandwidth of the target tier, measured in Phase 2."""
     tier_setup_s: float = 0.3
     gpu: GpuProfile = GPUS["l40s"]
+    restore_bytes_per_s: float | None = None
+    """Read-back rate on reuse, if it differs from the notice-time write rate."""
 
 
 def plan_flush(index: SessionIndex, request: FlushRequest, params: FlushParams, *,
@@ -168,33 +199,73 @@ def plan_flush(index: SessionIndex, request: FlushRequest, params: FlushParams, 
     Returns the block order and the session priority it was expanded from.
     """
     now = time.time() if now_unix is None else now_unix
+    if request.tier_bytes_per_s:
+        params = replace(params, tier_bytes_per_s=request.tier_bytes_per_s)
     window = max(0.0, request.deadline_unix - now - DEADLINE_MARGIN_S)
     budget = int(window * params.tier_bytes_per_s)
-    pending = {sid: [k for k in chain.ordered()] for sid, chain in index.sessions.items()}
+    allowed = set(request.only) if request.only is not None else None
+    pending = {sid: chain.ordered() for sid, chain in index.sessions.items()
+               if allowed is None or sid in allowed}
     order = request.sessions if request.sessions is not None else \
-        session_priority(index, params, window, now)
+        session_priority(index, params, window, now, only=allowed, idle_s=request.idle_s)
+    if allowed is not None:
+        order = [sid for sid in order if sid in allowed]
     flush = flush_order(order, pending, block_bytes=params.block_bytes,
                         budget_bytes=budget, already_present=index.cascaded)
     return flush, list(order)
 
 
 def session_priority(index: SessionIndex, params: FlushParams, window_s: float,
-                     now: float) -> list[str]:
-    """Rank sessions by kvevac.planner's value density: recompute avoided x P(reuse)
-    per byte of tier bandwidth. Sessions the planner drops still follow, so leftover
-    budget ships their heads as partial prefixes."""
+                     now: float, *, only: set[str] | None = None,
+                     idle_s: dict[str, float] | None = None) -> list[str]:
+    """Rank sessions for the flush: recompute avoided x P(reuse) per byte of tier
+    bandwidth (kvevac.planner's value density).
+
+    Two candidate orders, and the one worth more under this budget wins:
+    - kvevac.planner's greedy plan: whole sessions that fit before the deadline, by
+      density, then partial prefixes in leftover time, then everything else;
+    - pure density order, where the budget cuts the last session to a prefix. Greedy
+      skips a valuable session that does not fit whole and may spend the budget on a
+      worse one that does; shipping a long head of the valuable one can be worth more.
+    """
     model = ModelProfile("vllm", max(1, params.block_bytes // params.block_tokens))
     link = LinkProfile("tier", params.tier_bytes_per_s, params.tier_setup_s)
     objects = []
     for sid, chain in index.sessions.items():
+        if only is not None and sid not in only:
+            continue
         missing = sum(1 for k in chain.keys if k not in index.cascaded)
         if missing == 0:
             continue
+        idle = idle_s[sid] if idle_s and sid in idle_s else now - chain.last_used
         objects.append(KVObject(sid, missing * params.block_tokens,
-                                reuse_prob=recency_reuse_prob(now - chain.last_used)))
-    dest = Destination("tier", "remote", 10**15, link, remote_store=True)
+                                reuse_prob=recency_reuse_prob(idle)))
+    reload = LinkProfile("restore", params.restore_bytes_per_s, params.tier_setup_s) \
+        if params.restore_bytes_per_s else None
+    dest = Destination("tier", "remote", 10**15, link, remote_store=True,
+                       reload_link=reload)
     plan = plan_evacuation(objects, [dest], notice_s=window_s, model=model,
-                           gpu=params.gpu, source_group="local")
-    shipped = [s.object_id for s in plan.steps if s.action is Action.TRANSFER]
-    dropped = [s.object_id for s in plan.steps if s.action is not Action.TRANSFER]
-    return shipped + dropped
+                           gpu=params.gpu, source_group="local", partial_prefix=True)
+    moved = sorted((s for s in plan.steps if s.action is Action.TRANSFER),
+                   key=lambda s: s.start_s)
+    greedy = [s.object_id for s in moved] + \
+        [s.object_id for s in plan.steps if s.action is not Action.TRANSFER]
+
+    def density(obj: KVObject) -> float:
+        return save_value_s(obj, dest, model, params.gpu) / transfer_s(obj.tokens, model, link)
+
+    by_density = [o.id for o in sorted(objects, key=density, reverse=True)]
+    sizes = {o.id: o for o in objects}
+
+    def worth(order: list[str]) -> float:
+        budget, value = int(window_s * params.tier_bytes_per_s), 0.0
+        for sid in order:
+            tokens = min(sizes[sid].tokens, budget // model.kv_bytes_per_token)
+            if tokens <= 0:
+                break
+            value += save_value_s(replace(sizes[sid], tokens=tokens), dest, model,
+                                  params.gpu)
+            budget -= tokens * model.kv_bytes_per_token
+        return value
+
+    return by_density if worth(by_density) > worth(greedy) else greedy

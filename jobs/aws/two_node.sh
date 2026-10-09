@@ -10,6 +10,7 @@
 #    the same zone (falling back to any zone), so the plugin's deadline flush and the
 #    restore both go over the network to the peer's RAM.
 # Expected cost: about $1.2 (L40S ~35 min) + $0.2 (memory node). Cap: ~$2.3.
+# jobs/aws/planner.sh reuses this with KVEVAC_JOB=planner and its own PEER_USER_DATA.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 export AWS_DEFAULT_REGION="${AWS_REGION:-us-east-2}" AWS_PAGER=""
@@ -25,7 +26,7 @@ ami="$(aws ssm get-parameter --name \
 peer="$(aws ec2 run-instances --instance-type "$PEER_TYPE" --image-id "$ami" \
   --subnet-id "$subnet" --count 1 --instance-initiated-shutdown-behavior terminate \
   --metadata-options HttpTokens=required,HttpEndpoint=enabled \
-  --user-data "file://jobs/aws/peer_node.sh" \
+  --user-data "file://${PEER_USER_DATA:-jobs/aws/peer_node.sh}" \
   --tag-specifications "ResourceType=instance,Tags=[{Key=project,Value=kvevac-peer},{Key=Name,Value=kvevac-peer}]" \
   --query 'Instances[0].InstanceId' --output text)"
 cleanup() {
@@ -38,7 +39,7 @@ peer_ip="$(aws ec2 describe-instances --instance-ids "$peer" \
 say "memory node $peer ($PEER_TYPE) in $AZ at $peer_ip"
 aws ec2 wait instance-running --instance-ids "$peer"
 
-export KVEVAC_JOB=phase3 PHASE3_TIER=peer PEER_IP="$peer_ip" MARKET=on-demand \
+export KVEVAC_JOB="${KVEVAC_JOB:-phase3}" PHASE3_TIER=peer PEER_IP="$peer_ip" MARKET=on-demand \
   MAX_MIN="${MAX_MIN:-60}" KVEVAC_RUNS="${KVEVAC_RUNS:-$HOME/kvevac-runs/two-node}"
 mkdir -p "$KVEVAC_RUNS"
 SUBNET_ID="$subnet" RETRY_MIN="${SAME_AZ_RETRY_MIN:-20}" bash jobs/aws/kvevac-aws.sh || true
