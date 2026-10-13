@@ -63,7 +63,10 @@ at zero steady-state cost?
   sessions with **output parity** against cold recompute. On the instance's NVMe (~0.4
   GB/s restore) recompute is faster. **Two nodes**: evacuation to a peer's DRAM over the
   network took 6.6 s for 10.2 GB, and restore from it beat recompute on a 59k-token turn
-  (8.3 s vs 9.1 s TTFT) with output parity. 8B on L40S sits at the crossover.
+  (8.3 s vs 9.1 s TTFT) with output parity. 8B on L40S sits at the crossover. **For a
+  24B model (Mistral-Small, AWQ) on an L4, restore cut TTFT 2.8–3.7×** (15.2 → 4.1 s at
+  13.8k tokens) with output parity (§2d). A tight-budget run (ρ ≈ 0.3) truncated
+  mid-session and finished 2 s before a 30 s deadline (§2c).
 - [ ] Phase 4: live FIS-triggered reclaims, then the write-up.
 
 ![Write-through vs hybrid vs evacuation under a replication bandwidth budget](docs/figures/backpressure.svg)
