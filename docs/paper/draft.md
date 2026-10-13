@@ -207,8 +207,9 @@ not measurement.
 - **The planner's choices are untested on hardware.** One L4 run forced ρ ≈ 0.3 (egress
   cap, 30 s notice). The flush truncated mid-session, finished 2 s before the deadline
   (within 0.1 s of projection), and a partially evacuated session restored with output
-  parity. One complete session diverged at its second token, which we attribute,
-  unverified, to a floating-point near-tie. Its sessions (2k–12k tokens) were below the
+  parity. One complete session diverged at its second token; a repeat with
+  logprobs showed an exact tie there (−3.0773 for both candidates), with restored and cold
+  logprobs within 0.01–0.05, so it is floating-point tie-breaking, not corrupted KV. Its sessions (2k–12k tokens) were below the
   ~54k-token length where restoring 8B KV beats recomputing it, so every restore was
   valued ≤ 0 and value-based choices remain untested (`docs/phase3-results.md` §2c).
 - **Single runs.** The GPU timings have no repeats or error bars.

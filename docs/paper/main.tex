@@ -239,8 +239,9 @@ instance announced 118\,s of notice, of which at least 97\,s was observed usable
 (one run), still about 14$\times$ the 6.6\,s flush. One L4 run forced $\rho \approx
 0.3$ with an egress cap and a 30\,s notice: the flush cut mid-session, finished 2\,s
 before the deadline (within 0.1\,s of its projection), and a partially evacuated
-session restored with output parity. One complete session diverged at its second token,
-which we attribute, unverified, to a floating-point near-tie between prefill paths.
+session restored with output parity. One complete session diverged at its second token; a repeat with logprobs showed an
+exact tie there ($-3.0773$ for both candidates), with restored and cold logprobs within
+0.01--0.05, so the divergence is floating-point tie-breaking, not corrupted KV.
 Its sessions (2k--12k tokens) were below the ${\sim}$54k-token length where restoring
 8B KV beats recomputing it, so every restore was valued $\le 0$ and the planner's
 value-based choices remain untested on hardware. The GPU timings are single runs without error

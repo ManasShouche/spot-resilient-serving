@@ -1,0 +1,94 @@
+  instance | boot: self-terminate in 60 min; model NousResearch/Meta-Llama-3.1-8B-Instruct
+  instance | install: uv + vllm
+  instance | env: GPU NVIDIA L4
+  instance | mem: used 0G avail 14G shm 0
+  instance | mem: used 0G avail 14G shm 0
+  instance | phase3: nfs client ready; mounting 172.31.46.146
+  instance | phase3: tier on /mnt/peer
+  instance | phase3: egress on enp39s0 capped at 320 Mbit/s
+  instance | mem: used 0G avail 14G shm 0
+  instance | mem: used 0G avail 14G shm 0
+  instance | mem: used 0G avail 14G shm 0
+  instance | mem: used 0G avail 14G shm 0
+  instance | phase3: tier write bandwidth 0.04 GB/s
+  instance | phase3: starting A (deferred) on :8001
+  instance | mem: used 2G avail 12G shm 0
+  instance | mem: used 4G avail 9G shm 4.0K
+  instance | mem: used 4G avail 10G shm 4.0K
+  instance | mem: used 4G avail 10G shm 4.0K
+  instance | mem: used 3G avail 11G shm 4.0K
+  instance | mem: used 3G avail 11G shm 4.0K
+  instance | mem: used 3G avail 11G shm 4.0K
+  instance | mem: used 3G avail 11G shm 4.0K
+  instance | mem: used 3G avail 11G shm 4.0K
+  instance | mem: used 3G avail 11G shm 4.0K
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 3G avail 11G shm 4.0K
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 3G avail 11G shm 4.0K
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 3G avail 11G shm 4.0K
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 3G avail 11G shm 4.0K
+  instance | mem: used 3G avail 11G shm 4.0K
+  instance | mem: used 3G avail 5G shm 5.1G
+  instance | mem: used 4G avail 5G shm 5.1G
+  instance | phase3: A healthy
+  instance | phase3: turn 1 s4: 2040 tokens, TTFT 1.0258 s
+  instance | phase3: turn 1 s3: 4086 tokens, TTFT 1.1961 s
+  instance | phase3: turn 1 s2: 7171 tokens, TTFT 2.2402 s
+  instance | phase3: turn 1 s1: 12255 tokens, TTFT 4.0488 s
+  instance | mem: used 4G avail 5G shm 5.1G
+  instance | mem: used 4G avail 5G shm 5.1G
+  instance | phase3: flush report: {'seq': 1, 'started_unix': 1791889177.6386383, 'sessions_planned': ['s4', 's3', 's2', 's1'], 'complete_sessions': ['s4', 's3'], 'partial_sessions': {'s2': 147}, 'skipped_sessions': ['s1'
+  instance | phase3: egress cap on enp39s0 removed
+  instance | phase3: starting B (write_through) on :8002
+  instance | mem: used 1G avail 13G shm 0
+  instance | mem: used 1G avail 13G shm 0
+  instance | mem: used 3G avail 11G shm 0
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 3G avail 5G shm 5.1G
+  instance | phase3: B healthy
+  instance | phase3: turn 2 restored s4: 3613 tokens, TTFT 1.2073 s
+  instance | phase3: turn 2 restored s3: 5667 tokens, TTFT 1.2556 s
+  instance | phase3: turn 2 restored s2: 8752 tokens, TTFT 2.5998 s
+  instance | phase3: turn 2 restored s1: 13838 tokens, TTFT 4.8673 s
+  instance | phase3: starting C (write_through) on :8003
+  instance | mem: used 0G avail 13G shm 0
+  instance | mem: used 3G avail 11G shm 0
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 3G avail 6G shm 5.1G
+  instance | phase3: C healthy
+  instance | mem: used 3G avail 5G shm 5.1G
+  instance | phase3: turn 2 cold s4: 3613 tokens, TTFT 1.362 s
+  instance | phase3: turn 2 cold s3: 5667 tokens, TTFT 1.7273 s
+  instance | phase3: turn 2 cold s2: 8752 tokens, TTFT 2.7747 s
+  instance | phase3: turn 2 cold s1: 13838 tokens, TTFT 4.7283 s
+  instance | phase3: parity {'s4': True, 's3': False, 's2': True, 's1': True}, TTFT speedup {'s4': 1.13, 's3': 1.38, 's2': 1.07, 's1': 0.97}
+  instance | done: phase3 test complete
+  instance | finished: status 0; sending results

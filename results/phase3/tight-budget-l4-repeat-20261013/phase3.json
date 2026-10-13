@@ -1,0 +1,933 @@
+{
+ "model": "NousResearch/Meta-Llama-3.1-8B-Instruct",
+ "sessions": {
+  "s4": 2000,
+  "s3": 4000,
+  "s2": 7000,
+  "s1": 12000
+ },
+ "tier": "/mnt/peer/kvevac-tier",
+ "cpu_gb": 5.0,
+ "notice_s": 30.0,
+ "egress_cap_mbit": 320,
+ "tier_write_GBps": 0.04,
+ "turn1": {
+  "s4": {
+   "ttft_s": 1.0258,
+   "text": " timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk",
+   "top_logprobs": [
+    {
+     " timeout": -2.4243,
+     " disk": -2.6118
+    },
+    {
+     " disk": -2.8517,
+     " spot": -3.2892
+    },
+    {
+     " timeout": -2.99,
+     " patch": -3.115
+    },
+    {
+     " disk": -2.9513,
+     " timeout": -3.0138
+    },
+    {
+     " timeout": -2.4027,
+     " patch": -3.1527
+    },
+    {
+     " disk": -2.3366,
+     " timeout": -2.3991
+    },
+    {
+     " timeout": -1.4192,
+     " commit": -3.4192
+    },
+    {
+     " disk": -1.199,
+     " timeout": -2.2615
+    },
+    {
+     " timeout": -0.6237,
+     " commit": -3.7487
+    },
+    {
+     " disk": -0.6665,
+     " timeout": -2.5415
+    },
+    {
+     " timeout": -0.356,
+     " commit": -4.1685
+    },
+    {
+     " disk": -0.4007,
+     " timeout": -2.9007
+    },
+    {
+     " timeout": -0.2577,
+     " commit": -4.5077
+    },
+    {
+     " disk": -0.2531,
+     " timeout": -3.2531
+    },
+    {
+     " timeout": -0.1741,
+     " agent": -4.8616
+    },
+    {
+     " disk": -0.1933,
+     " timeout": -3.5058
+    }
+   ],
+   "prompt_tokens": 2040,
+   "total_s": 3.5118
+  },
+  "s3": {
+   "ttft_s": 1.1961,
+   "text": " disk build patch disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk",
+   "top_logprobs": [
+    {
+     " disk": -2.8262,
+     " patch": -3.1387
+    },
+    {
+     " build": -3.2,
+     " agent": -3.2
+    },
+    {
+     " patch": -3.0839,
+     " timeout": -3.2089
+    },
+    {
+     " disk": -2.9627,
+     " timeout": -3.1502
+    },
+    {
+     " timeout": -2.9746,
+     " build": -3.1621
+    },
+    {
+     " disk": -3.0204,
+     " timeout": -3.2079
+    },
+    {
+     " timeout": -2.7076,
+     " build": -3.1451
+    },
+    {
+     " disk": -2.5174,
+     " timeout": -2.6424
+    },
+    {
+     " timeout": -1.8531,
+     " build": -3.2281
+    },
+    {
+     " disk": -1.5557,
+     " timeout": -2.0557
+    },
+    {
+     " timeout": -0.7289,
+     " build": -3.6664
+    },
+    {
+     " disk": -0.8196,
+     " timeout": -2.1321
+    },
+    {
+     " timeout": -0.2859,
+     " build": -4.2234
+    },
+    {
+     " disk": -0.495,
+     " timeout": -2.495
+    },
+    {
+     " timeout": -0.1901,
+     " build": -4.5651
+    },
+    {
+     " disk": -0.3165,
+     " timeout": -2.8165
+    }
+   ],
+   "prompt_tokens": 4086,
+   "total_s": 4.0756
+  },
+  "s2": {
+   "ttft_s": 2.2402,
+   "text": " timeout notice timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout",
+   "top_logprobs": [
+    {
+     " timeout": -2.511,
+     " disk": -2.9485
+    },
+    {
+     " notice": -3.1113,
+     " timeout": -3.2363
+    },
+    {
+     " timeout": -2.5527,
+     " disk": -3.2402
+    },
+    {
+     " timeout": -2.947,
+     " notice": -3.2595
+    },
+    {
+     " timeout": -2.7406,
+     " notice": -3.1156
+    },
+    {
+     " timeout": -1.7622,
+     " notice": -3.1997
+    },
+    {
+     " timeout": -0.8848,
+     " notice": -3.3848
+    },
+    {
+     " timeout": -0.4861,
+     " notice": -3.7986
+    },
+    {
+     " timeout": -0.309,
+     " notice": -4.2465
+    },
+    {
+     " timeout": -0.2142,
+     " error": -4.6517
+    },
+    {
+     " timeout": -0.1651,
+     " error": -4.8526
+    },
+    {
+     " timeout": -0.1427,
+     " error": -4.9552
+    },
+    {
+     " timeout": -0.1168,
+     " error": -5.1168
+    },
+    {
+     " timeout": -0.0956,
+     " error": -5.2831
+    },
+    {
+     " timeout": -0.0788,
+     " error": -5.4538
+    },
+    {
+     " timeout": -0.0714,
+     " error": -5.5089
+    }
+   ],
+   "prompt_tokens": 7171,
+   "total_s": 5.1897
+  },
+  "s1": {
+   "ttft_s": 4.0488,
+   "text": " timeout patch disk timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout",
+   "top_logprobs": [
+    {
+     " timeout": -2.3505,
+     " patch": -2.8505
+    },
+    {
+     " patch": -2.7766,
+     " disk": -3.0891
+    },
+    {
+     " disk": -2.899,
+     " timeout": -3.024
+    },
+    {
+     " timeout": -2.9109,
+     " build": -3.1609
+    },
+    {
+     " patch": -2.8586,
+     " timeout": -3.2336
+    },
+    {
+     " timeout": -2.7357,
+     " disk": -2.9857
+    },
+    {
+     " patch": -2.6152,
+     " timeout": -2.9902
+    },
+    {
+     " timeout": -1.9935,
+     " patch": -2.931
+    },
+    {
+     " patch": -1.6233,
+     " timeout": -2.1858
+    },
+    {
+     " timeout": -0.8906,
+     " patch": -2.5156
+    },
+    {
+     " patch": -0.7374,
+     " timeout": -1.9874
+    },
+    {
+     " timeout": -0.4095,
+     " patch": -2.6595
+    },
+    {
+     " patch": -0.4396,
+     " timeout": -2.1271
+    },
+    {
+     " timeout": -0.2355,
+     " patch": -3.048
+    },
+    {
+     " patch": -0.303,
+     " timeout": -2.303
+    },
+    {
+     " timeout": -0.1513,
+     " patch": -3.3388
+    }
+   ],
+   "prompt_tokens": 12255,
+   "total_s": 7.1166
+  }
+ },
+ "tier_before_flush": {
+  "files": 0,
+  "GB": 0.0
+ },
+ "deadline_unix": 1791889207.6355567,
+ "flush": {
+  "seq": 1,
+  "started_unix": 1791889177.6386383,
+  "sessions_planned": [
+   "s4",
+   "s3",
+   "s2",
+   "s1"
+  ],
+  "complete_sessions": [
+   "s4",
+   "s3"
+  ],
+  "partial_sessions": {
+   "s2": 147
+  },
+  "skipped_sessions": [
+   "s1"
+  ],
+  "keys_submitted": 529,
+  "bytes_submitted": 1109393408,
+  "projected_finish_unix": 1791889205.5866163,
+  "already_in_tier": 0,
+  "finished_unix": 1791889205.6089919,
+  "keys_confirmed": 529
+ },
+ "flush_wall_s": 28.9,
+ "finished_before_deadline_s": 2.03,
+ "tier_after_flush": {
+  "files": 529,
+  "GB": 1.109
+ },
+ "restored": {
+  "s4": {
+   "ttft_s": 1.2073,
+   "text": " timeout token timeout token timeout token timeout token timeout token timeout token timeout token timeout token timeout token timeout token timeout token timeout token timeout token timeout token timeout token timeout token timeout token timeout token timeout token timeout token timeout token timeout token timeout token timeout token",
+   "top_logprobs": [
+    {
+     " timeout": -2.2292,
+     " patch": -3.2292
+    },
+    {
+     " token": -2.9681,
+     " disk": -3.0306
+    },
+    {
+     " timeout": -2.5872,
+     " patch": -2.7747
+    },
+    {
+     " token": -2.9564,
+     " timeout": -2.9564
+    },
+    {
+     " timeout": -1.2436,
+     " token": -3.1811
+    },
+    {
+     " token": -0.4093,
+     " timeout": -2.2843
+    },
+    {
+     " timeout": -0.1623,
+     " token": -3.6623
+    },
+    {
+     " token": -0.1588,
+     " timeout": -3.0963
+    },
+    {
+     " timeout": -0.108,
+     " token": -4.108
+    },
+    {
+     " token": -0.1026,
+     " timeout": -3.2901
+    },
+    {
+     " timeout": -0.0883,
+     " token": -4.3383
+    },
+    {
+     " token": -0.0755,
+     " timeout": -3.513
+    },
+    {
+     " timeout": -0.0715,
+     " token": -4.634
+    },
+    {
+     " token": -0.0605,
+     " timeout": -3.748
+    },
+    {
+     " timeout": -0.0649,
+     " token": -5.0024
+    },
+    {
+     " token": -0.0481,
+     " timeout": -3.9856
+    }
+   ],
+   "prompt_tokens": 3613,
+   "total_s": 3.7998
+  },
+  "s3": {
+   "ttft_s": 1.2556,
+   "text": " hash disk build timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout",
+   "top_logprobs": [
+    {
+     " hash": -2.9506,
+     " timeout": -3.0131
+    },
+    {
+     " disk": -3.0736,
+     " token": -3.1361
+    },
+    {
+     " build": -3.0821,
+     " notice": -3.1446
+    },
+    {
+     " timeout": -2.9302,
+     " patch": -3.1177
+    },
+    {
+     " disk": -2.6669,
+     " token": -3.0419
+    },
+    {
+     " timeout": -2.2906,
+     " build": -3.0406
+    },
+    {
+     " disk": -0.6606,
+     " timeout": -2.0356
+    },
+    {
+     " timeout": -0.1231,
+     " build": -4.7481
+    },
+    {
+     " disk": -0.0865,
+     " timeout": -3.774
+    },
+    {
+     " timeout": -0.0694,
+     " build": -5.3819
+    },
+    {
+     " disk": -0.0512,
+     " timeout": -4.4262
+    },
+    {
+     " timeout": -0.0543,
+     " request": -5.3668
+    },
+    {
+     " disk": -0.0399,
+     " timeout": -4.6649
+    },
+    {
+     " timeout": -0.0386,
+     " request": -5.4761
+    },
+    {
+     " disk": -0.0313,
+     " timeout": -4.9688
+    },
+    {
+     " timeout": -0.0369,
+     " request": -5.5994
+    }
+   ],
+   "prompt_tokens": 5667,
+   "total_s": 4.1708
+  },
+  "s2": {
+   "ttft_s": 2.5998,
+   "text": " timeout disk timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout",
+   "top_logprobs": [
+    {
+     " timeout": -2.7528,
+     " patch": -3.0028
+    },
+    {
+     " disk": -3.0085,
+     " timeout": -3.1335
+    },
+    {
+     " timeout": -2.7222,
+     " patch": -3.1597
+    },
+    {
+     " timeout": -2.7625,
+     " patch": -3.2
+    },
+    {
+     " timeout": -1.1866,
+     " disk": -3.2491
+    },
+    {
+     " timeout": -0.2141,
+     " error": -4.7766
+    },
+    {
+     " timeout": -0.0977,
+     " agent": -5.3477
+    },
+    {
+     " timeout": -0.0557,
+     " lock": -5.6807
+    },
+    {
+     " timeout": -0.0442,
+     " lock": -5.6692
+    },
+    {
+     " timeout": -0.0351,
+     " lock": -5.7851
+    },
+    {
+     " timeout": -0.0296,
+     " lock": -5.8421
+    },
+    {
+     " timeout": -0.0253,
+     " lock": -5.8378
+    },
+    {
+     " timeout": -0.0194,
+     " lock": -6.0194
+    },
+    {
+     " timeout": -0.0144,
+     " lock": -6.1394
+    },
+    {
+     " timeout": -0.0141,
+     " lock": -6.0141
+    },
+    {
+     " timeout": -0.0156,
+     " lock": -5.8281
+    }
+   ],
+   "prompt_tokens": 8752,
+   "total_s": 5.5823
+  },
+  "s1": {
+   "ttft_s": 4.8673,
+   "text": " timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout",
+   "top_logprobs": [
+    {
+     " timeout": -2.5673,
+     " error": -3.2548
+    },
+    {
+     " timeout": -2.8754,
+     " patch": -2.8754
+    },
+    {
+     " timeout": -1.9687,
+     " patch": -2.5312
+    },
+    {
+     " timeout": -0.381,
+     " patch": -3.381
+    },
+    {
+     " timeout": -0.1273,
+     " patch": -4.4398
+    },
+    {
+     " timeout": -0.0767,
+     " patch": -4.8267
+    },
+    {
+     " timeout": -0.048,
+     " patch": -5.3605
+    },
+    {
+     " timeout": -0.0414,
+     " patch": -5.6664
+    },
+    {
+     " timeout": -0.0345,
+     " patch": -5.972
+    },
+    {
+     " timeout": -0.0329,
+     " patch": -6.0954
+    },
+    {
+     " timeout": -0.0316,
+     " patch": -6.2191
+    },
+    {
+     " timeout": -0.0268,
+     " patch": -6.3393
+    },
+    {
+     " timeout": -0.0229,
+     " patch": -6.4604
+    },
+    {
+     " timeout": -0.0222,
+     " patch": -6.5222
+    },
+    {
+     " timeout": -0.0219,
+     " patch": -6.5219
+    },
+    {
+     " timeout": -0.0209,
+     " call": -6.5834
+    }
+   ],
+   "prompt_tokens": 13838,
+   "total_s": 7.969
+  }
+ },
+ "cold": {
+  "s4": {
+   "ttft_s": 1.362,
+   "text": " timeout token timeout token timeout token timeout token timeout token timeout token timeout token timeout token timeout token timeout token timeout token timeout token timeout token timeout token timeout token timeout token timeout token timeout token timeout token timeout token timeout token timeout token timeout token timeout token",
+   "top_logprobs": [
+    {
+     " timeout": -2.1877,
+     " patch": -3.2502
+    },
+    {
+     " token": -2.9626,
+     " disk": -3.0251
+    },
+    {
+     " timeout": -2.5987,
+     " patch": -2.7237
+    },
+    {
+     " token": -2.9291,
+     " timeout": -2.9916
+    },
+    {
+     " timeout": -1.2342,
+     " token": -3.1717
+    },
+    {
+     " token": -0.4128,
+     " timeout": -2.2878
+    },
+    {
+     " timeout": -0.163,
+     " token": -3.663
+    },
+    {
+     " token": -0.1746,
+     " timeout": -2.9871
+    },
+    {
+     " timeout": -0.1081,
+     " token": -4.0456
+    },
+    {
+     " token": -0.102,
+     " timeout": -3.2895
+    },
+    {
+     " timeout": -0.0875,
+     " token": -4.3375
+    },
+    {
+     " token": -0.0756,
+     " timeout": -3.5131
+    },
+    {
+     " timeout": -0.071,
+     " token": -4.6335
+    },
+    {
+     " token": -0.06,
+     " timeout": -3.7475
+    },
+    {
+     " timeout": -0.0639,
+     " token": -5.0639
+    },
+    {
+     " token": -0.0494,
+     " timeout": -3.9244
+    }
+   ],
+   "prompt_tokens": 3613,
+   "total_s": 3.9666
+  },
+  "s3": {
+   "ttft_s": 1.7273,
+   "text": " hash notice disk build timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk",
+   "top_logprobs": [
+    {
+     " hash": -2.9371,
+     " timeout": -3.0621
+    },
+    {
+     " notice": -3.0773,
+     " disk": -3.0773
+    },
+    {
+     " disk": -3.003,
+     " timeout": -3.0655
+    },
+    {
+     " build": -3.123,
+     " timeout": -3.248
+    },
+    {
+     " timeout": -2.9247,
+     " patch": -3.1122
+    },
+    {
+     " disk": -2.7069,
+     " token": -3.0819
+    },
+    {
+     " timeout": -2.397,
+     " build": -3.147
+    },
+    {
+     " disk": -0.7647,
+     " timeout": -2.0147
+    },
+    {
+     " timeout": -0.132,
+     " build": -4.757
+    },
+    {
+     " disk": -0.0864,
+     " timeout": -3.7739
+    },
+    {
+     " timeout": -0.0682,
+     " request": -5.4432
+    },
+    {
+     " disk": -0.0513,
+     " timeout": -4.3638
+    },
+    {
+     " timeout": -0.0528,
+     " request": -5.3653
+    },
+    {
+     " disk": -0.0392,
+     " timeout": -4.7267
+    },
+    {
+     " timeout": -0.0361,
+     " request": -5.5986
+    },
+    {
+     " disk": -0.0297,
+     " timeout": -5.0922
+    }
+   ],
+   "prompt_tokens": 5667,
+   "total_s": 4.642
+  },
+  "s2": {
+   "ttft_s": 2.7747,
+   "text": " timeout disk timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout",
+   "top_logprobs": [
+    {
+     " timeout": -2.7508,
+     " patch": -3.0008
+    },
+    {
+     " disk": -3.0127,
+     " timeout": -3.1377
+    },
+    {
+     " timeout": -2.7059,
+     " patch": -3.2059
+    },
+    {
+     " timeout": -2.7098,
+     " patch": -3.2098
+    },
+    {
+     " timeout": -1.1773,
+     " disk": -3.3023
+    },
+    {
+     " timeout": -0.2385,
+     " error": -4.676
+    },
+    {
+     " timeout": -0.0993,
+     " agent": -5.3493
+    },
+    {
+     " timeout": -0.0563,
+     " lock": -5.6813
+    },
+    {
+     " timeout": -0.0439,
+     " lock": -5.6689
+    },
+    {
+     " timeout": -0.0351,
+     " lock": -5.7851
+    },
+    {
+     " timeout": -0.0296,
+     " lock": -5.8421
+    },
+    {
+     " timeout": -0.0227,
+     " lock": -5.9602
+    },
+    {
+     " timeout": -0.0192,
+     " lock": -6.0192
+    },
+    {
+     " timeout": -0.0148,
+     " lock": -6.1398
+    },
+    {
+     " timeout": -0.0159,
+     " lock": -5.9534
+    },
+    {
+     " timeout": -0.0139,
+     " lock": -5.9514
+    }
+   ],
+   "prompt_tokens": 8752,
+   "total_s": 5.759
+  },
+  "s1": {
+   "ttft_s": 4.7283,
+   "text": " timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout",
+   "top_logprobs": [
+    {
+     " timeout": -2.5673,
+     " error": -3.2548
+    },
+    {
+     " timeout": -2.8754,
+     " patch": -2.8754
+    },
+    {
+     " timeout": -1.9687,
+     " patch": -2.5312
+    },
+    {
+     " timeout": -0.381,
+     " patch": -3.381
+    },
+    {
+     " timeout": -0.1273,
+     " patch": -4.4398
+    },
+    {
+     " timeout": -0.0767,
+     " patch": -4.8267
+    },
+    {
+     " timeout": -0.048,
+     " patch": -5.3605
+    },
+    {
+     " timeout": -0.0414,
+     " patch": -5.6664
+    },
+    {
+     " timeout": -0.0345,
+     " patch": -5.972
+    },
+    {
+     " timeout": -0.0329,
+     " patch": -6.0954
+    },
+    {
+     " timeout": -0.0316,
+     " patch": -6.2191
+    },
+    {
+     " timeout": -0.0268,
+     " patch": -6.3393
+    },
+    {
+     " timeout": -0.0229,
+     " patch": -6.4604
+    },
+    {
+     " timeout": -0.0222,
+     " patch": -6.5222
+    },
+    {
+     " timeout": -0.0219,
+     " patch": -6.5219
+    },
+    {
+     " timeout": -0.0209,
+     " call": -6.5834
+    }
+   ],
+   "prompt_tokens": 13838,
+   "total_s": 7.833
+  }
+ },
+ "output_parity": {
+  "s4": true,
+  "s3": false,
+  "s2": true,
+  "s1": true
+ },
+ "ttft_speedup": {
+  "s4": 1.13,
+  "s3": 1.38,
+  "s2": 1.07,
+  "s1": 0.97
+ }
+}
