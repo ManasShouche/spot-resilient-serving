@@ -86,6 +86,9 @@ def user_data(files: dict[str, str] = INSTANCE_FILES, strip: bool = False) -> st
         if strip and source.endswith(".py"):
             text = _strip_docstrings(text)
         elif strip and source.endswith(".sh"):
+            # The phase3 branch always exits; drop the calibration code after it.
+            if ": kvevac-phase3-end" in text:
+                text = text[:text.index(": kvevac-phase3-end")]
             # Whole-line comments only; the shebang stays.
             lines = text.splitlines()
             text = "\n".join(lines[:1] + [ln for ln in lines[1:]

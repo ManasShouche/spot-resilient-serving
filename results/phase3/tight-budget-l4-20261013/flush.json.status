@@ -1,0 +1,1 @@
+{"seq": 1, "started_unix": 1791881164.177556, "sessions_planned": ["s4", "s3", "s2", "s1"], "complete_sessions": ["s4", "s3"], "partial_sessions": {"s2": 147}, "skipped_sessions": ["s1"], "keys_submitted": 529, "bytes_submitted": 1109393408, "projected_finish_unix": 1791881192.1259003, "already_in_tier": 0, "finished_unix": 1791881192.1483154, "keys_confirmed": 529}

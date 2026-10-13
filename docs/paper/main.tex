@@ -236,9 +236,15 @@ constants. Differences under about 20 points are within noise. Spot g6e capacity
 unavailable throughout (placement score 1/10 in three US regions), so the GPU tests
 emulate the reclaim with \texttt{SIGKILL}. A real FIS interruption on a CPU spot
 instance announced 118\,s of notice, of which at least 97\,s was observed usable
-(one run), still about 14$\times$ the 6.6\,s flush. No
-GPU run had $\rho < 1$, so the planner is untested on hardware, and the GPU timings
-are single runs without error bars. GPU results are for 8B only. The ``peer'' was a CPU
+(one run), still about 14$\times$ the 6.6\,s flush. One L4 run forced $\rho \approx
+0.3$ with an egress cap and a 30\,s notice: the flush cut mid-session, finished 2\,s
+before the deadline (within 0.1\,s of its projection), and a partially evacuated
+session restored with output parity. One complete session diverged at its second token,
+which we attribute, unverified, to a floating-point near-tie between prefill paths.
+Its sessions (2k--12k tokens) were below the ${\sim}$54k-token length where restoring
+8B KV beats recomputing it, so every restore was valued $\le 0$ and the planner's
+value-based choices remain untested on hardware. The GPU timings are single runs without error
+bars. GPU results are for 8B only. The ``peer'' was a CPU
 memory node serving RAM over NFS; a surviving GPU peer reached by NIXL P2P into GPU
 memory would remove the promotion bottleneck, and is unmeasured.
 
