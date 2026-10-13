@@ -145,8 +145,9 @@ class Server:
             },
         }
         cmd = [args.python, "-m", "vllm.entrypoints.openai.api_server", "--model",
-               args.model, "--port", str(port), "--max-model-len", str(MAX_MODEL_LEN),
-               "--gpu-memory-utilization", "0.85", "--kv-transfer-config", json.dumps(cfg)]
+               args.model, "--port", str(port), "--max-model-len", str(args.max_model_len),
+               "--gpu-memory-utilization", str(args.gpu_util),
+               "--kv-transfer-config", json.dumps(cfg)]
         env = {**os.environ, "PYTHONHASHSEED": "0", "VLLM_USE_FLASHINFER_SAMPLER": "0"}
         self.name, self.port = name, port
         self.log_path = Path(args.logs) / f"vllm-{name}.log"
@@ -200,6 +201,9 @@ def main() -> None:
     parser.add_argument("--notice-s", type=float, default=120.0)
     parser.add_argument("--sessions", help="'id:words,...' in serving order (default: two "
                         "sessions, 56k and 20k words)")
+    parser.add_argument("--max-model-len", type=int, default=MAX_MODEL_LEN)
+    parser.add_argument("--gpu-util", type=float, default=0.85,
+                        help="vLLM --gpu-memory-utilization (24 GB GPUs need ~0.92)")
     parser.add_argument("--throttle-dev", help="network device to cap while A evacuates")
     parser.add_argument("--rate-mbit", type=int, help="egress cap in Mbit/s (needs --throttle-dev)")
     parser.add_argument("--python", default=sys.executable)

@@ -196,6 +196,7 @@ if [ "${KVEVAC_JOB:-calibrate}" = phase3 ]; then
     --out "$OUT" --logs "$ROOT" --python "$PYTHON" \
     --cpu-gb "${PHASE3_CPU_GB:-14}" --scale "${PHASE3_SCALE:-1}" --cold-tier "$ROOT/cold-tier" \
     --notice-s "${PHASE3_NOTICE_S:-120}" ${PHASE3_SESSIONS:+--sessions "$PHASE3_SESSIONS"} \
+    ${PHASE3_MAX_LEN:+--max-model-len "$PHASE3_MAX_LEN"} ${PHASE3_GPU_UTIL:+--gpu-util "$PHASE3_GPU_UTIL"} \
     ${PHASE3_RATE_MBIT:+--rate-mbit "$PHASE3_RATE_MBIT" --throttle-dev "$(ip route get "${PEER_IP:-1.1.1.1}" | awk '{for (i = 1; i < NF; i++) if ($i == "dev") print $(i + 1)}')"}
   STATUS=$?
   for f in "$ROOT"/vllm-*.log; do
