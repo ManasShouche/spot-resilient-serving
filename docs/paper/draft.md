@@ -201,8 +201,8 @@ measured restore rate.
 (2.84 GB) in 2.3 s (projected 2.6 s). Restore cut TTFT from 15.2 s to 4.1 s at 13.8k
 tokens (3.7×) and from 6.9 s to 2.5 s at 6.7k (2.8×), with output parity for both. Its KV
 per token is 1.25× that of 8B while its prefill compute is about 3×, and the L4's slower
-prefill (~0.9k tok/s at 12k tokens) widens the gap. These are single runs on a different
-GPU, so the two points bracket the crossover rather than form a controlled sweep.
+prefill (~0.9k tok/s at 12k tokens) and 4-bit weights (dequantized during prefill) widen
+the gap. Model, GPU and precision all changed and these are single runs, so the two points bracket the crossover rather than form a controlled sweep.
 
 ## 7. Discussion and limitations
 
