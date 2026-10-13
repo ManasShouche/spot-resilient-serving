@@ -155,8 +155,10 @@ about 3× the prefill compute. Raw data: `results/phase3/mistral24b-l4-20261013/
   recompute were at parity (§2b). For a 24B model on an L4, restoring the evacuated
   session KV cut time to first token by 2.8–3.7×. Prefill here runs at about 0.9k tok/s
   (12.3k tokens in 13.3 s cold), while the same session's KV is only ~2 GB.
-- **Two things changed at once:** the model (more compute per byte of KV) and the GPU
-  (the L4 prefills more slowly than the L40S). Both push toward restore. These are single
+- **Three things changed at once:** the model (more compute per byte of KV), the GPU
+  (the L4 prefills more slowly than the L40S) and the weights (4-bit AWQ kernels
+  dequantize during prefill, so they recompute more slowly than 16-bit weights would).
+  All three push toward restore. These are single
   runs, so treat the two results as bracketing the crossover, not as a controlled
   sweep. A 70B run on L40S-class GPUs would separate the factors but needs a larger GPU
   quota.

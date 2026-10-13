@@ -50,6 +50,9 @@ class Destination:
     survival_prob: float = 1.0
     remote_store: bool = False
     """A remote store must be fetched back on reuse; a peer serves the KV locally."""
+    reload_link: LinkProfile | None = None
+    """Path used to fetch the KV back on reuse, when it differs from the evacuation path
+    (e.g. a notice-time link that is throttled or shared, restored later at full speed)."""
 
 
 @dataclass(frozen=True)
@@ -81,7 +84,8 @@ class Plan:
 def save_value_s(obj: KVObject, dest: Destination, model: ModelProfile,
                  gpu: GpuProfile) -> float:
     """Expected recompute seconds avoided by placing obj's KV at dest."""
-    reload = transfer_s(obj.tokens, model, dest.link) if dest.remote_store else 0.0
+    reload = transfer_s(obj.tokens, model, dest.reload_link or dest.link) \
+        if dest.remote_store else 0.0
     gain = recompute_s(obj.tokens, gpu) - reload
     return max(0.0, obj.reuse_prob * dest.survival_prob * gain)
 

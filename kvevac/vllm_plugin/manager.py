@@ -60,6 +60,7 @@ from vllm.v1.kv_offload.tiering.base import JobResult, SecondaryTierManager
 from vllm.v1.kv_offload.tiering.manager import JobMetadata, TieringOffloadingManager
 from vllm.v1.kv_offload.tiering.spec import TieringOffloadingSpec
 
+from kvevac.profiles import GPUS, GpuProfile
 from kvevac.vllm_plugin.core import (
     SESSION_PARAM,
     CascadeMode,
@@ -95,11 +96,12 @@ class DeadlineTieringOffloadingManager(TieringOffloadingManager):
     _report: FlushReport | None
     _flush_ctx: ReqContext | None
     _flush_tier: int
+    _batch_keys: int
 
     @classmethod
     def adopt(cls, manager: TieringOffloadingManager, *, mode: CascadeMode,
-              control_path: Path | None, params: FlushParams
-              ) -> DeadlineTieringOffloadingManager:
+              control_path: Path | None, params: FlushParams,
+              batch_keys: int = FLUSH_BATCH_KEYS) -> DeadlineTieringOffloadingManager:
         """Upgrade the manager upstream's spec just built, instead of copying its
         construction code (which changes often)."""
         manager.__class__ = cls
@@ -114,6 +116,7 @@ class DeadlineTieringOffloadingManager(TieringOffloadingManager):
         manager._report = None
         manager._flush_ctx = None
         manager._flush_tier = 0
+        manager._batch_keys = batch_keys
         logger.info("kvevac: cascade mode %s, control file %s", mode, control_path)
         return manager
 
@@ -171,6 +174,7 @@ class DeadlineTieringOffloadingManager(TieringOffloadingManager):
         self._index.mark_cascaded(keys)
         if job_metadata.transfer_job.job_id in self._flush_jobs and self._report:
             self._report.keys_confirmed += len(keys)
+            self._report.jobs_done.append([round(time.time(), 3), len(keys)])
 
     @override
     def _process_finished_jobs(self) -> None:
@@ -196,16 +200,25 @@ class DeadlineTieringOffloadingManager(TieringOffloadingManager):
     def flush_for_deadline(self, request: FlushRequest) -> FlushReport:
         """Submit dirty blocks of the most valuable sessions before the deadline."""
         started = time.time()
+        if request.reset and request.only:
+            self._index.uncascade(request.only)
         tier = self.secondary_tiers[request.tier]
         flush, order = plan_flush(self._index, request, self._params, now_unix=started)
         ctx = self._flush_ctx = ReqContext(req_id=f"{FLUSH_REQ_ID}-{request.seq}")
         self._flush_tier = request.tier
         tier.on_new_request(ctx)
         # Only blocks still resident in the primary tier can be read from it.
-        ready = [k for k in flush.keys
-                 if self.primary_tier.lookup(k, ctx) is LookupResult.HIT]
-        for start in range(0, len(ready), FLUSH_BATCH_KEYS):
-            job = self.create_store_job(ready[start:start + FLUSH_BATCH_KEYS], ctx,
+        resident = [(k, sid) for k, sid in zip(flush.keys, flush.key_sessions, strict=True)
+                    if self.primary_tier.lookup(k, ctx) is LookupResult.HIT]
+        ready = [k for k, _ in resident]
+        segments: list[list] = []
+        for _, sid in resident:
+            if segments and segments[-1][0] == sid:
+                segments[-1][1] += 1
+            else:
+                segments.append([sid, 1])
+        for start in range(0, len(ready), self._batch_keys):
+            job = self.create_store_job(ready[start:start + self._batch_keys], ctx,
                                         request.tier)
             self._flush_jobs.add(job.job_id)
             tier.submit_store(job)
@@ -216,8 +229,9 @@ class DeadlineTieringOffloadingManager(TieringOffloadingManager):
             partial_sessions=flush.partial_sessions,
             skipped_sessions=flush.skipped_sessions, keys_submitted=len(ready),
             bytes_submitted=sent,
-            projected_finish_unix=started + sent / self._params.tier_bytes_per_s,
-            already_in_tier=len(self._index.cascaded))
+            projected_finish_unix=started + sent / (request.tier_bytes_per_s
+                                                    or self._params.tier_bytes_per_s),
+            already_in_tier=len(self._index.cascaded), segments=segments)
         logger.info("kvevac: flush %d submitted %d blocks (%.2f GB) for %d sessions; "
                     "%.1f s to deadline", request.seq, len(ready), sent / 1e9,
                     len(flush.complete_sessions) + len(flush.partial_sessions),
@@ -261,11 +275,19 @@ class DeadlineTieringOffloadingSpec(TieringOffloadingSpec):
         control = cfg.get("control_path")
         # One offload key covers one chunk of blocks_per_chunk GPU blocks.
         tokens = int(self.tokens_per_block[0]) * int(self.blocks_per_chunk)
+        gpu = GPUS["l40s"]
+        if "prefill_tokens_per_s" in cfg:  # measured constants (results/phase2/)
+            gpu = GpuProfile("measured", float(cfg["prefill_tokens_per_s"]),
+                             float(cfg.get("attention_knee_tokens",
+                                           gpu.attention_knee_tokens)),
+                             gpu.decode_tokens_per_s)
+        restore = cfg.get("restore_bytes_per_s")
         params = FlushParams(block_bytes=int(self.kv_bytes_per_chunk),
                              block_tokens=tokens,
                              tier_bytes_per_s=float(cfg.get("tier_bytes_per_s", 1e9)),
-                             tier_setup_s=float(cfg.get("tier_setup_s", 0.3)))
+                             tier_setup_s=float(cfg.get("tier_setup_s", 0.3)), gpu=gpu,
+                             restore_bytes_per_s=float(restore) if restore else None)
         self._manager = DeadlineTieringOffloadingManager.adopt(
             manager, mode=mode, control_path=Path(control) if control else None,
-            params=params)
+            params=params, batch_keys=int(cfg.get("flush_batch_keys", FLUSH_BATCH_KEYS)))
         return self._manager

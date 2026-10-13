@@ -147,7 +147,7 @@ json.dump(info, open(out, "w"), indent=1)
 PY
 event env "GPU $GPU_NAME"
 
-if [ "${KVEVAC_JOB:-calibrate}" = phase3 ]; then
+if [ "${KVEVAC_JOB:-calibrate}" = phase3 ] || [ "${KVEVAC_JOB:-}" = planner ]; then
   # Phase 3: the vLLM plugin's first GPU test (kvevac.vllm_plugin.gpu_test). The tier
   # goes on the instance-store NVMe if there is one (DLAMIs mount it at /opt/dlami/nvme).
   TIER_BASE="$ROOT"
@@ -192,6 +192,11 @@ if [ "${KVEVAC_JOB:-calibrate}" = phase3 ]; then
     fi
   fi
   event phase3 "tier on $TIER_BASE"
+  if [ "$KVEVAC_JOB" = planner ]; then
+    # Code and trials ride on the memory node (user-data is full): jobs/aws/planner_job.sh
+    tar -xzf /mnt/peer/code.tgz -C "$ROOT/src" && . "$ROOT/src/planner_job.sh"
+    STATUS=$?
+  else
   "$PYTHON" -m kvevac.vllm_plugin.gpu_test --model "$MODEL" --tier "$TIER_BASE/kvevac-tier" \
     --out "$OUT" --logs "$ROOT" --python "$PYTHON" \
     --cpu-gb "${PHASE3_CPU_GB:-14}" --scale "${PHASE3_SCALE:-1}" --cold-tier "$ROOT/cold-tier" \
@@ -199,6 +204,7 @@ if [ "${KVEVAC_JOB:-calibrate}" = phase3 ]; then
     ${PHASE3_MAX_LEN:+--max-model-len "$PHASE3_MAX_LEN"} ${PHASE3_GPU_UTIL:+--gpu-util "$PHASE3_GPU_UTIL"} \
     ${PHASE3_RATE_MBIT:+--rate-mbit "$PHASE3_RATE_MBIT" --throttle-dev "$(ip route get "${PEER_IP:-1.1.1.1}" | awk '{for (i = 1; i < NF; i++) if ($i == "dev") print $(i + 1)}')"}
   STATUS=$?
+  fi
   for f in "$ROOT"/vllm-*.log; do
     [ -f "$f" ] && tail -n 120 "$f" | cut -c1-300 >"$OUT/$(basename "$f" .log).tail.log"
   done

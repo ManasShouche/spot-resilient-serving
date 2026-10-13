@@ -31,6 +31,8 @@ class FlushOrder:
     partial_sessions: dict[str, int] = field(default_factory=dict)
     """Session id -> number of leading blocks that will arrive (cut by the budget)."""
     skipped_sessions: list[str] = field(default_factory=list)
+    key_sessions: list[str] = field(default_factory=list)
+    """Session each entry of `keys` was queued for (same length as keys)."""
 
 
 def flush_order(
@@ -47,6 +49,7 @@ def flush_order(
         raise ValueError("block_bytes must be positive")
     queued: set[Hashable] = set(already_present)
     keys: list[Hashable] = []
+    key_sessions: list[str] = []
     used = 0
     complete, skipped = [], []
     partial: dict[str, int] = {}
@@ -65,6 +68,7 @@ def flush_order(
                 budget_left = False
                 break
             keys.append(key)
+            key_sessions.append(session_id)
             queued.add(key)
             used += block_bytes
             usable += 1
@@ -74,4 +78,4 @@ def flush_order(
             partial[session_id] = usable
         else:
             skipped.append(session_id)
-    return FlushOrder(keys, used, complete, partial, skipped)
+    return FlushOrder(keys, used, complete, partial, skipped, key_sessions)
