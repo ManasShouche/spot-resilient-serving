@@ -122,10 +122,12 @@ uncapped. Raw data: `results/phase3/tight-budget-l4-20261013/`.
   those paths. This is **not proven**. The test now records top-2 logprobs per token, so
   a repeat can show whether the flip is a near-tie. Until then, report parity as 3 of 4
   sessions in this run (and 4 of 4 across both L40S runs), not as bit-exact in general.
-- **What the planner chose.** With measured constants, every session's restore value was
-  ≤ 0 (restore ≈ recompute for 8B), so its order fell back to serving order. This run
-  validates truncation, deadline compliance and partial restore, not value-based
-  choices; those need a model where restore clearly pays (70B).
+- **What the planner chose.** These sessions (2k–12k tokens) are far shorter than the
+  length at which restoring 8B KV beats recomputing it (about 54k tokens with the
+  measured L40S prefill and 0.9 GB/s restore), so every restore was valued ≤ 0 and the
+  order fell back to serving order. This run validates truncation, deadline compliance
+  and partial restore, not value-based choices. Testing those needs sessions above the
+  crossover, which the AgentX trace has; 8B is enough, 70B is not required.
 
 ## 3. What this means for the claims
 - The Phase 3 design is implementable out of tree, against vLLM's real tiering code,

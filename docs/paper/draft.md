@@ -208,8 +208,9 @@ not measurement.
   cap, 30 s notice). The flush truncated mid-session, finished 2 s before the deadline
   (within 0.1 s of projection), and a partially evacuated session restored with output
   parity. One complete session diverged at its second token, which we attribute,
-  unverified, to a floating-point near-tie. With measured constants every restore was
-  valued ≤ 0, so value-based choices remain untested (`docs/phase3-results.md` §2c).
+  unverified, to a floating-point near-tie. Its sessions (2k–12k tokens) were below the
+  ~54k-token length where restoring 8B KV beats recomputing it, so every restore was
+  valued ≤ 0 and value-based choices remain untested (`docs/phase3-results.md` §2c).
 - **Single runs.** The GPU timings have no repeats or error bars.
 - **Small models are the hard case for restore.** The prototype's GPU results are for
   8B. The value of saving KV, and the crossover, should be measured at 70B on
