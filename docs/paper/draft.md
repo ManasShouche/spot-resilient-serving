@@ -24,7 +24,9 @@ out-of-tree plugin for vLLM's tiered KV offloading. On AWS it evacuates 10.2 GB 
 session KV from an L40S node to a CPU memory node's DRAM (served over NFS) in 6.6 s, and
 restores it with greedy output identical to recomputation (M). Restore and recompute
 are at parity for 8B on L40S: 8.3 s vs 9.1 s TTFT at 59k tokens and 2.9 s vs 2.4 s at
-22k, single runs (M). We report this as a crossover, not a win.
+22k, single runs (M). For a 24B model (Mistral-Small-24B, 4-bit AWQ) on an L4, restore
+cuts TTFT by 2.8–3.7× with identical output (M, single runs), so we measure both sides of
+the crossover.
 
 ## 1. Introduction
 
@@ -192,9 +194,15 @@ rather than the 1.3–1.5 GB/s network) it is 9% faster at 59k tokens and 23% sl
 9.11 s on two different instances, so run-to-run spread is a few percent and the 59k
 gap is suggestive, not established; we call it parity. This agrees with the arithmetic:
 for 8B on L40S, recompute costs the equivalent of ~0.83 GB/s of KV, close to the
-measured restore rate. We expect larger models to favour restore, since a 70B model
-has 2.5× the KV per token but about 8.75× the prefill compute, but this is reasoning,
-not measurement.
+measured restore rate.
+
+**A larger model (M).** Mistral-Small-24B (4-bit AWQ) on an L4, same two-node setup and
+120 s notice (`results/phase3/mistral24b-l4-20261013/`). The flush moved both sessions
+(2.84 GB) in 2.3 s (projected 2.6 s). Restore cut TTFT from 15.2 s to 4.1 s at 13.8k
+tokens (3.7×) and from 6.9 s to 2.5 s at 6.7k (2.8×), with output parity for both. Its KV
+per token is 1.25× that of 8B while its prefill compute is about 3×, and the L4's slower
+prefill (~0.9k tok/s at 12k tokens) widens the gap. These are single runs on a different
+GPU, so the two points bracket the crossover rather than form a controlled sweep.
 
 ## 7. Discussion and limitations
 
@@ -228,8 +236,8 @@ no existing fault-tolerance mechanism protects. The termination notice is enough
 move it: 10 GB in under 7 s on commodity cloud networking, planned against the
 deadline, and restored with output identical to recomputation. Whether moving it
 *pays* is a crossover in model size, context length and restore bandwidth. For 8B on
-an L40S we measured parity; the larger-model side of the crossover is the next
-measurement, not a result.
+an L40S we measured parity; for a 24B model on an L4, restore was 2.8–3.7× faster than
+recompute with identical output.
 
 ## Artifacts
 Code, results and the AWS harness: `kvevac/`, `results/`, `jobs/aws/`. Reproduction

@@ -1,0 +1,489 @@
+{
+ "model": "stelterlab/Mistral-Small-24B-Instruct-2501-AWQ",
+ "sessions": {
+  "s-long": 12000,
+  "s-short": 5000
+ },
+ "tier": "/mnt/peer/kvevac-tier",
+ "cpu_gb": 5.0,
+ "notice_s": 120.0,
+ "egress_cap_mbit": null,
+ "tier_write_GBps": 1.093,
+ "turn1": {
+  "s-long": {
+   "ttft_s": 13.3399,
+   "text": " agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice",
+   "top_logprobs": [
+    {
+     " agent": -2.9368,
+     " commit": -2.9602
+    },
+    {
+     " notice": -2.8123,
+     " commit": -2.992
+    },
+    {
+     " agent": -3.0122,
+     " client": -3.2153
+    },
+    {
+     " notice": -2.8387,
+     " commit": -3.2528
+    },
+    {
+     " agent": -2.9036,
+     " client": -3.2864
+    },
+    {
+     " notice": -2.5083,
+     " commit": -3.2895
+    },
+    {
+     " agent": -2.5957,
+     " client": -3.2363
+    },
+    {
+     " notice": -2.1681,
+     " agent": -3.2071
+    },
+    {
+     " agent": -2.1733,
+     " client": -3.0717
+    },
+    {
+     " notice": -1.7671,
+     " agent": -2.8843
+    },
+    {
+     " agent": -1.6405,
+     " notice": -2.9374
+    },
+    {
+     " notice": -1.1753,
+     " agent": -2.6831
+    },
+    {
+     " agent": -1.1295,
+     " notice": -2.8248
+    },
+    {
+     " notice": -0.7563,
+     " agent": -2.6392
+    },
+    {
+     " agent": -0.7265,
+     " notice": -2.828
+    },
+    {
+     " notice": -0.4819,
+     " agent": -2.8648
+    }
+   ],
+   "prompt_tokens": 12254,
+   "total_s": 15.8261
+  },
+  "s-short": {
+   "ttft_s": 5.1475,
+   "text": " agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice",
+   "top_logprobs": [
+    {
+     " agent": -2.7704,
+     " notice": -2.9579
+    },
+    {
+     " notice": -2.8929,
+     " commit": -2.9632
+    },
+    {
+     " agent": -2.6518,
+     " notice": -2.98
+    },
+    {
+     " notice": -2.4077,
+     " commit": -3.0327
+    },
+    {
+     " agent": -2.4471,
+     " notice": -2.9159
+    },
+    {
+     " notice": -2.0102,
+     " agent": -3.0337
+    },
+    {
+     " agent": -1.7787,
+     " notice": -2.7084
+    },
+    {
+     " notice": -0.7923,
+     " agent": -3.1985
+    },
+    {
+     " agent": -0.5586,
+     " notice": -3.3242
+    },
+    {
+     " notice": -0.2679,
+     " agent": -3.8851
+    },
+    {
+     " agent": -0.2226,
+     "</s>": -4.3476
+    },
+    {
+     " notice": -0.1391,
+     "</s>": -4.5688
+    },
+    {
+     " agent": -0.1431,
+     "</s>": -3.9165
+    },
+    {
+     " notice": -0.0844,
+     "</s>": -4.2016
+    },
+    {
+     " agent": -0.1076,
+     "</s>": -3.6076
+    },
+    {
+     " notice": -0.0655,
+     "</s>": -4.0498
+    }
+   ],
+   "prompt_tokens": 5095,
+   "total_s": 7.7221
+  }
+ },
+ "tier_before_flush": {
+  "files": 0,
+  "GB": 0.0
+ },
+ "deadline_unix": 1791895656.2073054,
+ "flush": {
+  "seq": 1,
+  "started_unix": 1791895536.2104194,
+  "sessions_planned": [
+   "s-long",
+   "s-short"
+  ],
+  "complete_sessions": [
+   "s-long",
+   "s-short"
+  ],
+  "partial_sessions": {},
+  "skipped_sessions": [],
+  "keys_submitted": 1083,
+  "bytes_submitted": 2839019520,
+  "projected_finish_unix": 1791895538.807637,
+  "already_in_tier": 0,
+  "finished_unix": 1791895538.5201414,
+  "keys_confirmed": 1083
+ },
+ "flush_wall_s": 3.25,
+ "finished_before_deadline_s": 117.69,
+ "tier_after_flush": {
+  "files": 1083,
+  "GB": 2.839
+ },
+ "restored": {
+  "s-long": {
+   "ttft_s": 4.1429,
+   "text": " agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice",
+   "top_logprobs": [
+    {
+     " agent": -2.8396,
+     " commit": -3.2927
+    },
+    {
+     " notice": -2.7638,
+     " commit": -3.2482
+    },
+    {
+     " agent": -2.3379,
+     " fix": -3.2285
+    },
+    {
+     " notice": -1.2205,
+     " fix": -3.2283
+    },
+    {
+     " agent": -0.5634,
+     " client": -3.4931
+    },
+    {
+     " notice": -0.2398,
+     " agent": -4.5132
+    },
+    {
+     " agent": -0.1468,
+     " model": -4.3733
+    },
+    {
+     " notice": -0.1077,
+     " ev": -5.264
+    },
+    {
+     " agent": -0.0844,
+     " model": -4.5922
+    },
+    {
+     " notice": -0.0775,
+     " ev": -5.6634
+    },
+    {
+     " agent": -0.0609,
+     " model": -4.7719
+    },
+    {
+     " notice": -0.0617,
+     " ev": -6.007
+    },
+    {
+     " agent": -0.0521,
+     " model": -4.8567
+    },
+    {
+     " notice": -0.0532,
+     " ev": -6.2876
+    },
+    {
+     " agent": -0.0487,
+     " model": -4.8768
+    },
+    {
+     " notice": -0.0479,
+     "</s>": -6.1963
+    }
+   ],
+   "prompt_tokens": 13834,
+   "total_s": 6.6655
+  },
+  "s-short": {
+   "ttft_s": 2.4771,
+   "text": " notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent",
+   "top_logprobs": [
+    {
+     " notice": -2.8447,
+     " commit": -2.8525
+    },
+    {
+     " agent": -2.6084,
+     " commit": -3.0381
+    },
+    {
+     " notice": -2.7235,
+     " commit": -3.0204
+    },
+    {
+     " agent": -2.2837,
+     " notice": -3.1431
+    },
+    {
+     " notice": -0.8156,
+     " agent": -3.1594
+    },
+    {
+     " agent": -0.3139,
+     " notice": -4.0171
+    },
+    {
+     " notice": -0.1361,
+     " agent": -4.9877
+    },
+    {
+     " agent": -0.1014,
+     "</s>": -4.8436
+    },
+    {
+     " notice": -0.0694,
+     "</s>": -5.0225
+    },
+    {
+     " agent": -0.0681,
+     "</s>": -4.7322
+    },
+    {
+     " notice": -0.0506,
+     "</s>": -4.91
+    },
+    {
+     " agent": -0.0552,
+     "</s>": -4.6646
+    },
+    {
+     " notice": -0.0436,
+     "</s>": -4.8015
+    },
+    {
+     " agent": -0.051,
+     "</s>": -4.6057
+    },
+    {
+     " notice": -0.0415,
+     "</s>": -4.7525
+    },
+    {
+     " agent": -0.0516,
+     "</s>": -4.5516
+    }
+   ],
+   "prompt_tokens": 6673,
+   "total_s": 5.0982
+  }
+ },
+ "cold": {
+  "s-long": {
+   "ttft_s": 15.1782,
+   "text": " agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice",
+   "top_logprobs": [
+    {
+     " agent": -2.8406,
+     " commit": -3.2938
+    },
+    {
+     " notice": -2.7647,
+     " commit": -3.2491
+    },
+    {
+     " agent": -2.3373,
+     " fix": -3.2279
+    },
+    {
+     " notice": -1.2188,
+     " fix": -3.2266
+    },
+    {
+     " agent": -0.5628,
+     " client": -3.4925
+    },
+    {
+     " notice": -0.2395,
+     " agent": -4.5129
+    },
+    {
+     " agent": -0.1464,
+     " model": -4.373
+    },
+    {
+     " notice": -0.1074,
+     " ev": -5.2637
+    },
+    {
+     " agent": -0.0843,
+     " model": -4.5921
+    },
+    {
+     " notice": -0.0779,
+     " ev": -5.656
+    },
+    {
+     " agent": -0.0609,
+     " model": -4.7718
+    },
+    {
+     " notice": -0.0614,
+     " ev": -6.0145
+    },
+    {
+     " agent": -0.0519,
+     " model": -4.8566
+    },
+    {
+     " notice": -0.0531,
+     " ev": -6.2952
+    },
+    {
+     " agent": -0.0484,
+     " model": -4.8843
+    },
+    {
+     " notice": -0.0478,
+     "</s>": -6.2196
+    }
+   ],
+   "prompt_tokens": 13834,
+   "total_s": 17.7406
+  },
+  "s-short": {
+   "ttft_s": 6.9016,
+   "text": " notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent notice agent",
+   "top_logprobs": [
+    {
+     " notice": -2.8459,
+     " commit": -2.8537
+    },
+    {
+     " agent": -2.6157,
+     " commit": -3.0376
+    },
+    {
+     " notice": -2.7237,
+     " commit": -3.0206
+    },
+    {
+     " agent": -2.2855,
+     " notice": -3.1449
+    },
+    {
+     " notice": -0.8171,
+     " agent": -3.1608
+    },
+    {
+     " agent": -0.312,
+     " notice": -4.0151
+    },
+    {
+     " notice": -0.1356,
+     " agent": -4.9872
+    },
+    {
+     " agent": -0.1013,
+     "</s>": -4.8435
+    },
+    {
+     " notice": -0.0693,
+     "</s>": -5.0302
+    },
+    {
+     " agent": -0.0682,
+     "</s>": -4.7323
+    },
+    {
+     " notice": -0.0506,
+     "</s>": -4.91
+    },
+    {
+     " agent": -0.0552,
+     "</s>": -4.6646
+    },
+    {
+     " notice": -0.0437,
+     "</s>": -4.8015
+    },
+    {
+     " agent": -0.0509,
+     "</s>": -4.6134
+    },
+    {
+     " notice": -0.0415,
+     "</s>": -4.7525
+    },
+    {
+     " agent": -0.0515,
+     "</s>": -4.5593
+    }
+   ],
+   "prompt_tokens": 6673,
+   "total_s": 9.5238
+  }
+ },
+ "output_parity": {
+  "s-long": true,
+  "s-short": true
+ },
+ "ttft_speedup": {
+  "s-long": 3.66,
+  "s-short": 2.79
+ }
+}

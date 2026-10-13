@@ -1,0 +1,85 @@
+  instance | boot: self-terminate in 60 min; model stelterlab/Mistral-Small-24B-Instruct-2501-AWQ
+  instance | install: uv + vllm
+  instance | env: GPU NVIDIA L4
+  instance | mem: used 0G avail 14G shm 0
+  instance | mem: used 0G avail 14G shm 0
+  instance | phase3: nfs client ready; mounting 172.31.37.152
+  instance | phase3: tier on /mnt/peer
+  instance | phase3: tier write bandwidth 1.09 GB/s
+  instance | phase3: starting A (deferred) on :8001
+  instance | mem: used 1G avail 13G shm 0
+  instance | mem: used 3G avail 11G shm 4.0K
+  instance | mem: used 4G avail 10G shm 4.0K
+  instance | mem: used 4G avail 10G shm 4.0K
+  instance | mem: used 4G avail 10G shm 4.0K
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 3G avail 11G shm 4.0K
+  instance | mem: used 3G avail 11G shm 4.0K
+  instance | mem: used 3G avail 11G shm 4.0K
+  instance | mem: used 3G avail 6G shm 5.1G
+  instance | mem: used 3G avail 5G shm 5.1G
+  instance | phase3: A healthy
+  instance | mem: used 4G avail 5G shm 5.1G
+  instance | phase3: turn 1 s-long: 12254 tokens, TTFT 13.3399 s
+  instance | phase3: turn 1 s-short: 5095 tokens, TTFT 5.1475 s
+  instance | mem: used 4G avail 5G shm 5.1G
+  instance | phase3: flush report: {'seq': 1, 'started_unix': 1791895536.2104194, 'sessions_planned': ['s-long', 's-short'], 'complete_sessions': ['s-long', 's-short'], 'partial_sessions': {}, 'skipped_sessions': [], 'key
+  instance | phase3: starting B (write_through) on :8002
+  instance | mem: used 0G avail 13G shm 0
+  instance | mem: used 1G avail 13G shm 0
+  instance | mem: used 1G avail 13G shm 0
+  instance | mem: used 3G avail 11G shm 0
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 3G avail 6G shm 5.1G
+  instance | phase3: B healthy
+  instance | mem: used 3G avail 5G shm 5.1G
+  instance | phase3: turn 2 restored s-long: 13834 tokens, TTFT 4.1429 s
+  instance | phase3: turn 2 restored s-short: 6673 tokens, TTFT 2.4771 s
+  instance | phase3: starting C (write_through) on :8003
+  instance | mem: used 1G avail 13G shm 0
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 2G avail 11G shm 4.0K
+  instance | mem: used 3G avail 11G shm 4.0K
+  instance | phase3: C healthy
+  instance | mem: used 3G avail 5G shm 5.1G
+  instance | phase3: turn 2 cold s-long: 13834 tokens, TTFT 15.1782 s
+  instance | phase3: turn 2 cold s-short: 6673 tokens, TTFT 6.9016 s
+  instance | mem: used 0G avail 8G shm 5.1G
+  instance | phase3: parity {'s-long': True, 's-short': True}, TTFT speedup {'s-long': 3.66, 's-short': 2.79}
+  instance | done: phase3 test complete
+  instance | finished: status 0; sending results

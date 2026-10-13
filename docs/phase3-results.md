@@ -134,6 +134,33 @@ uncapped. Raw data: `results/phase3/tight-budget-l4-20261013/`.
   and partial restore, not value-based choices. Testing those needs sessions above the
   crossover, which the AgentX trace has; 8B is enough, 70B is not required.
 
+## 2d. A larger model: restore clearly beats recompute (13 October, L4)
+
+On-demand L40S was unavailable in every zone of us-east-1 and us-east-2 again, and a
+32B model does not fit an L4 with room for KV. So this used **Mistral-Small-24B-Instruct
+(4-bit AWQ, `stelterlab/Mistral-Small-24B-Instruct-2501-AWQ`, Apache-2.0)** on an L4
+(g6.xlarge), with the same two-node setup as §2b (CPU memory node over NFS, 120 s
+notice, no egress cap). Per token it has 1.25× the KV of Llama-3.1-8B (160 KiB) and
+about 3× the prefill compute. Raw data: `results/phase3/mistral24b-l4-20261013/`.
+
+| check | result |
+|---|---|
+| deferred mode, tier before the notice | 0 files |
+| flush to the peer | both sessions complete; **1,083 / 1,083 blocks (2.84 GB) in 2.3 s** (projected 2.6 s) |
+| TTFT, 13.8k-token turn 2 | **4.14 s restored vs. 15.18 s cold (3.66× faster)** |
+| TTFT, 6.7k-token turn 2 | **2.48 s restored vs. 6.90 s cold (2.79× faster)** |
+| output parity | **identical for both sessions** |
+
+- **This is the other side of the crossover, measured.** For 8B on an L40S, restore and
+  recompute were at parity (§2b). For a 24B model on an L4, restoring the evacuated
+  session KV cut time to first token by 2.8–3.7×. Prefill here runs at about 0.9k tok/s
+  (12.3k tokens in 13.3 s cold), while the same session's KV is only ~2 GB.
+- **Two things changed at once:** the model (more compute per byte of KV) and the GPU
+  (the L4 prefills more slowly than the L40S). Both push toward restore. These are single
+  runs, so treat the two results as bracketing the crossover, not as a controlled
+  sweep. A 70B run on L40S-class GPUs would separate the factors but needs a larger GPU
+  quota.
+
 ## 3. What this means for the claims
 - The Phase 3 design is implementable out of tree, against vLLM's real tiering code,
   without a fork, and it is correct (parity).

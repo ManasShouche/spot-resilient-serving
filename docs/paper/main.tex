@@ -39,8 +39,9 @@ about half, while replication does worse than doing nothing. We implement the po
 as an out-of-tree plugin for vLLM's tiered KV offloading. On AWS it evacuates 10.2\,GB
 of session KV from an L40S node to a CPU memory node's DRAM (served over NFS) in
 6.6\,s, and restores it with greedy output identical to recomputation. For 8B on an
-L40S, restore and recompute are at parity (single runs), which we report as a
-crossover, not a win.
+L40S, restore and recompute are at parity; for a 24B model (4-bit AWQ) on an L4,
+restoring cuts time to first token by 2.8--3.7$\times$ with identical output (single
+runs). Whether evacuation pays is a crossover in model size, and we measure both sides.
 \end{abstract}
 
 \noindent\emph{Labels:} \Sim{} simulated; \Cal{} simulated with constants measured on
@@ -226,9 +227,16 @@ by vLLM's promotion pipeline rather than the 1.3--1.5\,GB/s network) it is 9\% f
 at 59k tokens and 23\% slower at 22k. These are single runs. Cold TTFT for the same 59k
 prompt was 9.33 and 9.11\,s on two instances, so the 59k gap is suggestive, not
 established; we call it parity. This agrees with the arithmetic: for 8B on L40S,
-recompute costs the equivalent of $\sim$0.83\,GB/s of KV. We expect larger models to
-favour restore, since a 70B model has 2.5$\times$ the KV per token but about
-8.75$\times$ the prefill compute, but this is reasoning, not measurement.
+recompute costs the equivalent of $\sim$0.83\,GB/s of KV.
+
+\paragraph{A larger model\Meas.} Mistral-Small-24B (4-bit AWQ) on an L4, same two-node
+setup and 120\,s notice: the flush moved both sessions (2.84\,GB) in 2.3\,s (projected
+2.6\,s), and restore cut TTFT from 15.2 to 4.1\,s at 13.8k tokens (3.7$\times$) and from
+6.9 to 2.5\,s at 6.7k (2.8$\times$), with output parity for both. Its KV per token is
+1.25$\times$ that of 8B while its prefill compute is about 3$\times$, and the L4's slower
+prefill ($\sim$0.9k\,tok/s at 12k tokens) widens the gap. These are single runs on a
+different GPU, so the two points bracket the crossover rather than form a controlled
+sweep.
 
 \section{Limitations}
 The simulator has no memory-based admission control and uses assumed network
@@ -245,7 +253,8 @@ exact tie there ($-3.0773$ for both candidates), with restored and cold logprobs
 Its sessions (2k--12k tokens) were below the ${\sim}$54k-token length where restoring
 8B KV beats recomputing it, so every restore was valued $\le 0$ and the planner's
 value-based choices remain untested on hardware. The GPU timings are single runs without error
-bars. GPU results are for 8B only. The ``peer'' was a CPU
+bars. GPU results cover 8B (L40S, L4) and one 24B AWQ model (L4); none are 70B. The
+``peer'' was a CPU
 memory node serving RAM over NFS; a surviving GPU peer reached by NIXL P2P into GPU
 memory would remove the promotion bottleneck, and is unmeasured.
 
@@ -255,8 +264,8 @@ no existing mechanism protects. The termination notice is enough to move it: 10\
 in under 7\,s on commodity cloud networking, planned against the deadline, and
 restored with output identical to recomputation. Whether moving it \emph{pays} is a
 crossover in model size, context length and restore bandwidth. For 8B on an L40S we
-measured parity; the larger-model side of the crossover is the next measurement, not a
-result.
+measured parity; for a 24B model on an L4, restore was 2.8--3.7$\times$ faster than
+recompute with identical output.
 
 \bibliographystyle{plain}
 \bibliography{refs}
