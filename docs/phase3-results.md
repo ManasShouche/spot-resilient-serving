@@ -115,13 +115,18 @@ uncapped. Raw data: `results/phase3/tight-budget-l4-20261013/`.
   submitted blocks landed before the deadline.
 - **A partially evacuated session restores correctly.** s2's head (147 blocks) was
   restored and the rest recomputed, and its greedy output matched cold recompute.
-- **s3 diverged at the second generated token**: "hash *notice* disk build…" restored vs.
-  "hash disk build…" cold. The output stays coherent (no corruption-like garbage), which
-  points to a near-tie flipped by floating-point differences between prefill on a
-  restored prefix and a full prefill; vLLM does not guarantee identical outputs across
-  those paths. This is **not proven**. The test now records top-2 logprobs per token, so
-  a repeat can show whether the flip is a near-tie. Until then, report parity as 3 of 4
-  sessions in this run (and 4 of 4 across both L40S runs), not as bit-exact in general.
+- **s3's divergence is a floating-point tie, not corrupted KV (settled by a repeat).**
+  A second run with identical settings (`results/phase3/tight-budget-l4-repeat-20261013/`)
+  reproduced everything: the same flush plan, 529/529 blocks, 2.0 s before the deadline,
+  and parity for s4, s2 and s1. s3 again diverged at its second token, and this time the
+  test recorded top-2 logprobs. In the cold run the two candidates were **exactly
+  tied**: " notice" −3.0773 and " disk" −3.0773. Restored and cold logprobs differ by
+  0.01–0.05 throughout, the size of bf16 noise between prefill on a restored prefix and
+  a full prefill. That is enough to flip an exact tie, and the flip reversed between the
+  runs (restored "notice" in the first, "disk" in the second), which corrupted KV would
+  not do. The partially restored s2 tracks cold within ~0.02 per token. **Restored KV is
+  numerically equivalent to recomputed KV; greedy output parity holds except at exact
+  logit ties.**
 - **What the planner chose.** These sessions (2k–12k tokens) are far shorter than the
   length at which restoring 8B KV beats recomputing it (about 54k tokens with the
   measured L40S prefill and 0.9 GB/s restore), so every restore was valued ≤ 0 and the
