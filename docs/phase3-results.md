@@ -92,6 +92,41 @@ DRAM tier. Raw data is in `results/phase3/two-node-peer-dram-20261008/`.
   larger models (2.5× the KV but ~8.75× the prefill compute per token at 70B), longer
   contexts, or a faster restore path (e.g. NIXL P2P into GPU memory).
 
+## 2c. Tight budget: the flush must truncate (13 October, L4)
+
+The gap the paper admits is that no GPU run had ρ < 1. On-demand L40S was unavailable in
+every zone of us-east-1 and us-east-2 for 85 minutes, so this ran on an **L4**
+(g6.xlarge) with the same two-node setup (CPU memory node over NFS). Settings: four
+sessions served in order s4, s3, s2, s1 (2k, 4k, 7k and 12k tokens; ~3.6 GB of KV), a
+**30 s notice**, and the GPU node's egress capped at **320 Mbit/s** (tc) while process A
+evacuated, so only about 1.1 GB could leave (ρ ≈ 0.3). Restore and the cold baseline ran
+uncapped. Raw data: `results/phase3/tight-budget-l4-20261013/`.
+
+| check | result |
+|---|---|
+| flush plan | s4 and s3 complete, **s2 partial (first 147 blocks)**, s1 skipped |
+| blocks submitted / confirmed | 529 / 529 (1.11 GB) |
+| flush time, projected vs actual | **27.9 s vs 28.0 s** |
+| finished before the 30 s deadline | **yes, by 2.0 s** (the planner's safety margin) |
+| output parity, restored vs cold | s4 ✓, **s2 (partial) ✓**, s1 (skipped) ✓, **s3 ✗** |
+
+- **The deadline mechanism works under a binding budget.** The flush cut exactly where
+  the budget ran out, mid-session, finished within 0.1 s of its projection, and all
+  submitted blocks landed before the deadline.
+- **A partially evacuated session restores correctly.** s2's head (147 blocks) was
+  restored and the rest recomputed, and its greedy output matched cold recompute.
+- **s3 diverged at the second generated token**: "hash *notice* disk build…" restored vs.
+  "hash disk build…" cold. The output stays coherent (no corruption-like garbage), which
+  points to a near-tie flipped by floating-point differences between prefill on a
+  restored prefix and a full prefill; vLLM does not guarantee identical outputs across
+  those paths. This is **not proven**. The test now records top-2 logprobs per token, so
+  a repeat can show whether the flip is a near-tie. Until then, report parity as 3 of 4
+  sessions in this run (and 4 of 4 across both L40S runs), not as bit-exact in general.
+- **What the planner chose.** With measured constants, every session's restore value was
+  ≤ 0 (restore ≈ recompute for 8B), so its order fell back to serving order. This run
+  validates truncation, deadline compliance and partial restore, not value-based
+  choices; those need a model where restore clearly pays (70B).
+
 ## 3. What this means for the claims
 - The Phase 3 design is implementable out of tree, against vLLM's real tiering code,
   without a fork, and it is correct (parity).

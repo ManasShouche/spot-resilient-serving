@@ -204,7 +204,12 @@ not measurement.
 - **No real reclaim yet.** Spot g6e capacity was unavailable throughout (placement
   score 1/10 in three US regions), so FIS notice timing is unmeasured and the GPU tests
   emulate the reclaim with SIGKILL.
-- **The planner is untested on hardware.** No GPU run had ρ < 1 (§6).
+- **The planner's choices are untested on hardware.** One L4 run forced ρ ≈ 0.3 (egress
+  cap, 30 s notice). The flush truncated mid-session, finished 2 s before the deadline
+  (within 0.1 s of projection), and a partially evacuated session restored with output
+  parity. One complete session diverged at its second token, which we attribute,
+  unverified, to a floating-point near-tie. With measured constants every restore was
+  valued ≤ 0, so value-based choices remain untested (`docs/phase3-results.md` §2c).
 - **Single runs.** The GPU timings have no repeats or error bars.
 - **Small models are the hard case for restore.** The prototype's GPU results are for
   8B. The value of saving KV, and the crossover, should be measured at 70B on

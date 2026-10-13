@@ -66,13 +66,13 @@ def complete(port: int, model: str, prompt: str, session: str, max_tokens: int,
              timeout_s: float = 900.0) -> dict:
     body = json.dumps({
         "model": model, "prompt": prompt, "max_tokens": max_tokens, "temperature": 0,
-        "stream": True, "stream_options": {"include_usage": True},
+        "stream": True, "stream_options": {"include_usage": True}, "logprobs": 2,
         "kv_transfer_params": {"kvevac_session_id": session},
     }).encode()
     req = urllib.request.Request(f"http://127.0.0.1:{port}/v1/completions", data=body,
                                  headers={"Content-Type": "application/json"})
     sent = time.perf_counter()
-    ttft, out, usage = None, [], {}
+    ttft, out, usage, top = None, [], {}, []
     with urllib.request.urlopen(req, timeout=timeout_s) as resp:
         for raw in resp:
             line = raw.decode().strip()
@@ -84,7 +84,11 @@ def complete(port: int, model: str, prompt: str, session: str, max_tokens: int,
                 if choice.get("text"):
                     ttft = ttft or time.perf_counter() - sent
                     out.append(choice["text"])
-    return {"ttft_s": round(ttft or -1, 4), "text": "".join(out),
+                    # Top-2 logprobs per token: tells a near-tie flip from a real error
+                    # when restored and cold outputs diverge.
+                    for alts in (choice.get("logprobs") or {}).get("top_logprobs") or []:
+                        top.append({k: round(v, 4) for k, v in (alts or {}).items()})
+    return {"ttft_s": round(ttft or -1, 4), "text": "".join(out), "top_logprobs": top[:16],
             "prompt_tokens": usage.get("prompt_tokens"),
             "total_s": round(time.perf_counter() - sent, 4)}
 

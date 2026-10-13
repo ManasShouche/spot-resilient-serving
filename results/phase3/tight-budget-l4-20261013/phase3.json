@@ -1,0 +1,141 @@
+{
+ "model": "NousResearch/Meta-Llama-3.1-8B-Instruct",
+ "sessions": {
+  "s4": 2000,
+  "s3": 4000,
+  "s2": 7000,
+  "s1": 12000
+ },
+ "tier": "/mnt/peer/kvevac-tier",
+ "cpu_gb": 5.0,
+ "notice_s": 30.0,
+ "egress_cap_mbit": 320,
+ "tier_write_GBps": 0.04,
+ "turn1": {
+  "s4": {
+   "ttft_s": 0.5933,
+   "text": " timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk",
+   "prompt_tokens": 2040,
+   "total_s": 3.4163
+  },
+  "s3": {
+   "ttft_s": 1.1664,
+   "text": " disk build patch disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk",
+   "prompt_tokens": 4086,
+   "total_s": 4.0338
+  },
+  "s2": {
+   "ttft_s": 2.19,
+   "text": " timeout notice timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout",
+   "prompt_tokens": 7171,
+   "total_s": 5.1282
+  },
+  "s1": {
+   "ttft_s": 3.9706,
+   "text": " timeout patch disk timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout",
+   "prompt_tokens": 12255,
+   "total_s": 7.0279
+  }
+ },
+ "tier_before_flush": {
+  "files": 0,
+  "GB": 0.0
+ },
+ "deadline_unix": 1791881194.1741333,
+ "flush": {
+  "seq": 1,
+  "started_unix": 1791881164.177556,
+  "sessions_planned": [
+   "s4",
+   "s3",
+   "s2",
+   "s1"
+  ],
+  "complete_sessions": [
+   "s4",
+   "s3"
+  ],
+  "partial_sessions": {
+   "s2": 147
+  },
+  "skipped_sessions": [
+   "s1"
+  ],
+  "keys_submitted": 529,
+  "bytes_submitted": 1109393408,
+  "projected_finish_unix": 1791881192.1259003,
+  "already_in_tier": 0,
+  "finished_unix": 1791881192.1483154,
+  "keys_confirmed": 529
+ },
+ "flush_wall_s": 28.9,
+ "finished_before_deadline_s": 2.03,
+ "tier_after_flush": {
+  "files": 529,
+  "GB": 1.109
+ },
+ "restored": {
+  "s4": {
+   "ttft_s": 0.9399,
+   "text": " timeout token timeout token timeout token timeout token timeout token timeout token timeout token timeout token timeout token timeout token timeout token timeout token timeout token timeout token timeout token timeout token timeout token timeout token timeout token timeout token timeout token timeout token timeout token timeout token",
+   "prompt_tokens": 3613,
+   "total_s": 3.7965
+  },
+  "s3": {
+   "ttft_s": 1.1496,
+   "text": " hash notice disk build timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk",
+   "prompt_tokens": 5667,
+   "total_s": 4.0535
+  },
+  "s2": {
+   "ttft_s": 2.4467,
+   "text": " timeout disk timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout",
+   "prompt_tokens": 8752,
+   "total_s": 5.4201
+  },
+  "s1": {
+   "ttft_s": 4.7111,
+   "text": " timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch",
+   "prompt_tokens": 13838,
+   "total_s": 7.8032
+  }
+ },
+ "cold": {
+  "s4": {
+   "ttft_s": 1.0687,
+   "text": " timeout token timeout token timeout token timeout token timeout token timeout token timeout token timeout token timeout token timeout token timeout token timeout token timeout token timeout token timeout token timeout token timeout token timeout token timeout token timeout token timeout token timeout token timeout token timeout token",
+   "prompt_tokens": 3613,
+   "total_s": 3.925
+  },
+  "s3": {
+   "ttft_s": 1.6956,
+   "text": " hash disk build timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout disk timeout",
+   "prompt_tokens": 5667,
+   "total_s": 4.5991
+  },
+  "s2": {
+   "ttft_s": 2.7282,
+   "text": " timeout disk timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout timeout",
+   "prompt_tokens": 8752,
+   "total_s": 5.7026
+  },
+  "s1": {
+   "ttft_s": 4.663,
+   "text": " timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch timeout patch",
+   "prompt_tokens": 13838,
+   "total_s": 7.7569
+  }
+ },
+ "output_parity": {
+  "s4": true,
+  "s3": false,
+  "s2": true,
+  "s1": true
+ },
+ "ttft_speedup": {
+  "s4": 1.14,
+  "s3": 1.47,
+  "s2": 1.12,
+  "s1": 0.99
+ }
+}
