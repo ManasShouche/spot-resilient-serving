@@ -199,7 +199,10 @@ if [ "${KVEVAC_JOB:-calibrate}" = phase3 ] || [ "${KVEVAC_JOB:-}" = planner ]; t
   else
   "$PYTHON" -m kvevac.vllm_plugin.gpu_test --model "$MODEL" --tier "$TIER_BASE/kvevac-tier" \
     --out "$OUT" --logs "$ROOT" --python "$PYTHON" \
-    --cpu-gb "${PHASE3_CPU_GB:-14}" --scale "${PHASE3_SCALE:-1}" --cold-tier "$ROOT/cold-tier"
+    --cpu-gb "${PHASE3_CPU_GB:-14}" --scale "${PHASE3_SCALE:-1}" --cold-tier "$ROOT/cold-tier" \
+    --notice-s "${PHASE3_NOTICE_S:-120}" ${PHASE3_SESSIONS:+--sessions "$PHASE3_SESSIONS"} \
+    ${PHASE3_MAX_LEN:+--max-model-len "$PHASE3_MAX_LEN"} ${PHASE3_GPU_UTIL:+--gpu-util "$PHASE3_GPU_UTIL"} \
+    ${PHASE3_RATE_MBIT:+--rate-mbit "$PHASE3_RATE_MBIT" --throttle-dev "$(ip route get "${PEER_IP:-1.1.1.1}" | awk '{for (i = 1; i < NF; i++) if ($i == "dev") print $(i + 1)}')"}
   STATUS=$?
   fi
   for f in "$ROOT"/vllm-*.log; do
@@ -210,6 +213,7 @@ if [ "${KVEVAC_JOB:-calibrate}" = phase3 ] || [ "${KVEVAC_JOB:-}" = planner ]; t
   event "done" "phase3 test complete"
   exit 0
 fi
+: kvevac-phase3-end  # build.py cuts the phase3 user-data here; the rest is calibration
 
 event vllm "starting server; model download and compile take a while"
 DEFAULT_VLLM_CMD="$PYTHON -m vllm.entrypoints.openai.api_server --model $MODEL --port 8000 \

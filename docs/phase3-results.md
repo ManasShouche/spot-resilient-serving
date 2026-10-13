@@ -92,6 +92,48 @@ DRAM tier. Raw data is in `results/phase3/two-node-peer-dram-20261008/`.
   larger models (2.5× the KV but ~8.75× the prefill compute per token at 70B), longer
   contexts, or a faster restore path (e.g. NIXL P2P into GPU memory).
 
+## 2c. Tight budget: the flush must truncate (13 October, L4)
+
+The gap the paper admits is that no GPU run had ρ < 1. On-demand L40S was unavailable in
+every zone of us-east-1 and us-east-2 for 85 minutes, so this ran on an **L4**
+(g6.xlarge) with the same two-node setup (CPU memory node over NFS). Settings: four
+sessions served in order s4, s3, s2, s1 (2k, 4k, 7k and 12k tokens; ~3.6 GB of KV), a
+**30 s notice**, and the GPU node's egress capped at **320 Mbit/s** (tc) while process A
+evacuated, so only about 1.1 GB could leave (ρ ≈ 0.3). Restore and the cold baseline ran
+uncapped. Raw data: `results/phase3/tight-budget-l4-20261013/`.
+
+| check | result |
+|---|---|
+| flush plan | s4 and s3 complete, **s2 partial (first 147 blocks)**, s1 skipped |
+| blocks submitted / confirmed | 529 / 529 (1.11 GB) |
+| flush time, projected vs actual | **27.9 s vs 28.0 s** |
+| finished before the 30 s deadline | **yes, by 2.0 s** (the planner's safety margin) |
+| output parity, restored vs cold | s4 ✓, **s2 (partial) ✓**, s1 (skipped) ✓, **s3 ✗** |
+
+- **The deadline mechanism works under a binding budget.** The flush cut exactly where
+  the budget ran out, mid-session, finished within 0.1 s of its projection, and all
+  submitted blocks landed before the deadline.
+- **A partially evacuated session restores correctly.** s2's head (147 blocks) was
+  restored and the rest recomputed, and its greedy output matched cold recompute.
+- **s3's divergence is a floating-point tie, not corrupted KV (settled by a repeat).**
+  A second run with identical settings (`results/phase3/tight-budget-l4-repeat-20261013/`)
+  reproduced everything: the same flush plan, 529/529 blocks, 2.0 s before the deadline,
+  and parity for s4, s2 and s1. s3 again diverged at its second token, and this time the
+  test recorded top-2 logprobs. In the cold run the two candidates were **exactly
+  tied**: " notice" −3.0773 and " disk" −3.0773. Restored and cold logprobs differ by
+  0.01–0.05 throughout, the size of bf16 noise between prefill on a restored prefix and
+  a full prefill. That is enough to flip an exact tie, and the flip reversed between the
+  runs (restored "notice" in the first, "disk" in the second), which corrupted KV would
+  not do. The partially restored s2 tracks cold within ~0.02 per token. **Restored KV is
+  numerically equivalent to recomputed KV; greedy output parity holds except at exact
+  logit ties.**
+- **What the planner chose.** These sessions (2k–12k tokens) are far shorter than the
+  length at which restoring 8B KV beats recomputing it (about 54k tokens with the
+  measured L40S prefill and 0.9 GB/s restore), so every restore was valued ≤ 0 and the
+  order fell back to serving order. This run validates truncation, deadline compliance
+  and partial restore, not value-based choices. Testing those needs sessions above the
+  crossover, which the AgentX trace has; 8B is enough, 70B is not required.
+
 ## 3. What this means for the claims
 - The Phase 3 design is implementable out of tree, against vLLM's real tiering code,
   without a fork, and it is correct (parity).

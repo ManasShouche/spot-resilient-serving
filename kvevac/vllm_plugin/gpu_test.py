@@ -66,13 +66,13 @@ def complete(port: int, model: str, prompt: str, session: str, max_tokens: int,
              timeout_s: float = 900.0) -> dict:
     body = json.dumps({
         "model": model, "prompt": prompt, "max_tokens": max_tokens, "temperature": 0,
-        "stream": True, "stream_options": {"include_usage": True},
+        "stream": True, "stream_options": {"include_usage": True}, "logprobs": 2,
         "kv_transfer_params": {"kvevac_session_id": session},
     }).encode()
     req = urllib.request.Request(f"http://127.0.0.1:{port}/v1/completions", data=body,
                                  headers={"Content-Type": "application/json"})
     sent = time.perf_counter()
-    ttft, out, usage = None, [], {}
+    ttft, out, usage, top = None, [], {}, []
     with urllib.request.urlopen(req, timeout=timeout_s) as resp:
         for raw in resp:
             line = raw.decode().strip()
@@ -84,9 +84,27 @@ def complete(port: int, model: str, prompt: str, session: str, max_tokens: int,
                 if choice.get("text"):
                     ttft = ttft or time.perf_counter() - sent
                     out.append(choice["text"])
-    return {"ttft_s": round(ttft or -1, 4), "text": "".join(out),
+                    # Top-2 logprobs per token: tells a near-tie flip from a real error
+                    # when restored and cold outputs diverge.
+                    for alts in (choice.get("logprobs") or {}).get("top_logprobs") or []:
+                        top.append({k: round(v, 4) for k, v in (alts or {}).items()})
+    return {"ttft_s": round(ttft or -1, 4), "text": "".join(out), "top_logprobs": top[:16],
             "prompt_tokens": usage.get("prompt_tokens"),
             "total_s": round(time.perf_counter() - sent, 4)}
+
+
+def throttle(dev: str | None, mbit: int | None) -> None:
+    """Cap this node's egress on `dev` (tc tbf), or remove the cap when mbit is None.
+    Used to force a tight budget (rho < 1) while process A evacuates."""
+    if not dev:
+        return
+    subprocess.run(["tc", "qdisc", "del", "dev", dev, "root"], capture_output=True)
+    if mbit:
+        subprocess.run(["tc", "qdisc", "add", "dev", dev, "root", "tbf", "rate", f"{mbit}mbit",
+                        "burst", "1mb", "latency", "500ms"], check=True, capture_output=True)
+        log(f"egress on {dev} capped at {mbit} Mbit/s")
+    else:
+        log(f"egress cap on {dev} removed")
 
 
 def tier_stats(tier: Path) -> dict:
@@ -119,7 +137,7 @@ def write_bandwidth(tier: Path, gb: int = 4) -> float:
 class Server:
     def __init__(self, name: str, port: int, args: argparse.Namespace, tier: Path,
                  mode: str, control: Path | None, tier_bps: float, *,
-                 extra: dict | None = None, max_model_len: int = MAX_MODEL_LEN) -> None:
+                 extra: dict | None = None, max_model_len: int | None = None) -> None:
         cfg = {
             "kv_connector": "OffloadingConnector", "kv_role": "kv_both",
             "kv_connector_extra_config": {
@@ -133,8 +151,10 @@ class Server:
             },
         }
         cmd = [args.python, "-m", "vllm.entrypoints.openai.api_server", "--model",
-               args.model, "--port", str(port), "--max-model-len", str(max_model_len),
-               "--gpu-memory-utilization", "0.85", "--kv-transfer-config", json.dumps(cfg)]
+               args.model, "--port", str(port),
+               "--max-model-len", str(max_model_len or args.max_model_len),
+               "--gpu-memory-utilization", str(getattr(args, "gpu_util", 0.85)),
+               "--kv-transfer-config", json.dumps(cfg)]
         env = {**os.environ, "PYTHONHASHSEED": "0", "VLLM_USE_FLASHINFER_SAMPLER": "0"}
         self.name, self.port = name, port
         self.log_path = Path(args.logs) / f"vllm-{name}.log"
@@ -186,6 +206,13 @@ def main() -> None:
     parser.add_argument("--scale", type=float, default=1.0,
                         help="multiply the sessions' prompt lengths (RAM-tier runs need <1)")
     parser.add_argument("--notice-s", type=float, default=120.0)
+    parser.add_argument("--sessions", help="'id:words,...' in serving order (default: two "
+                        "sessions, 56k and 20k words)")
+    parser.add_argument("--max-model-len", type=int, default=MAX_MODEL_LEN)
+    parser.add_argument("--gpu-util", type=float, default=0.85,
+                        help="vLLM --gpu-memory-utilization (24 GB GPUs need ~0.92)")
+    parser.add_argument("--throttle-dev", help="network device to cap while A evacuates")
+    parser.add_argument("--rate-mbit", type=int, help="egress cap in Mbit/s (needs --throttle-dev)")
     parser.add_argument("--python", default=sys.executable)
     parser.add_argument("--cold-tier", type=Path,
                         help="tier for the cold baseline (default: next to --tier)")
@@ -194,9 +221,13 @@ def main() -> None:
     args = parser.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
     global SESSIONS
+    if args.sessions:
+        SESSIONS = {sid: int(words) for sid, words in
+                    (item.split(":") for item in args.sessions.split(","))}
     SESSIONS = {sid: int(words * args.scale) for sid, words in SESSIONS.items()}
     result: dict = {"model": args.model, "sessions": SESSIONS, "tier": str(args.tier),
-                    "cpu_gb": args.cpu_gb}
+                    "cpu_gb": args.cpu_gb, "notice_s": args.notice_s,
+                    "egress_cap_mbit": args.rate_mbit}
     report_path = args.out / "phase3.json"
 
     def save() -> None:
@@ -206,6 +237,7 @@ def main() -> None:
     for path in (tier, cold_tier):
         path.mkdir(parents=True, exist_ok=True)
     control = args.out / "flush.json"
+    throttle(args.throttle_dev, args.rate_mbit)  # the planner sees the capped bandwidth
     bps = write_bandwidth(tier)
     result["tier_write_GBps"] = round(bps / 1e9, 3)
     log(f"tier write bandwidth {bps / 1e9:.2f} GB/s")
@@ -222,6 +254,7 @@ def main() -> None:
         time.sleep(10)  # let GPU->CPU stores land
         result["tier_before_flush"] = tier_stats(tier)
         deadline = time.time() + args.notice_s
+        result["deadline_unix"] = deadline
         write_flush_request(control, FlushRequest(seq=1, deadline_unix=deadline))
         noticed = time.time()
         # A one-token request makes the scheduler step, so it polls the control file.
@@ -239,10 +272,13 @@ def main() -> None:
             complete(8001, args.model, "wake", "wake", 1)  # keep the scheduler stepping
         result["flush"] = report
         result["flush_wall_s"] = round(time.time() - noticed, 2)
+        if report and report.get("finished_unix"):
+            result["finished_before_deadline_s"] = round(deadline - report["finished_unix"], 2)
         result["tier_after_flush"] = tier_stats(tier)
         log(f"flush report: {json.dumps(report)[:400]}")
     finally:
         server.kill()
+        throttle(args.throttle_dev, None)  # restore and the cold baseline run uncapped
         save()
 
     turn2 = {sid: turn1[sid] + result["turn1"][sid]["text"] + " "
