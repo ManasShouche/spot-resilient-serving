@@ -163,6 +163,54 @@ about 3× the prefill compute. Raw data: `results/phase3/mistral24b-l4-20261013/
   sweep. A 70B run on L40S-class GPUs would separate the factors but needs a larger GPU
   quota.
 
+## 2e. Planner sweep: does the planner choose better than simple orders? (14 October)
+
+`jobs/aws/planner.sh` / `kvevac/planner_trials.py` (added in PR #9) on one on-demand
+**g6e.2xlarge (L40S, 64 GB RAM, 36 GiB CPU tier)** plus the CPU memory node, Llama-3.1-8B.
+Each snapshot holds 2–4 idle sessions drawn from the simulated fleet on the real AgentX
+trace, with real context lengths, idle times and whether they return (not told to any
+policy). For every link rate (tc-capped 250 and 1000 MB/s; measured 0.251 and 0.987 GB/s)
+× notice (10, 15, 30, 60 s) × policy, the tier is emptied and the same resident KV is
+flushed again. Value is the recompute saved, net of restore, for sessions that return
+(seconds). 247 GPU-minutes, about $10.3 including the memory node. **10 of 14 snapshots
+completed** before the job's run window closed (352 flushes). Raw data and the offline
+prediction made before launch: `results/phase3/planner-sweep-l40s-20261014/`.
+
+Mean value saved per snapshot (s), n = 10 (8 at 1000 MB/s W = 30 s; only the planner
+reached 1000 MB/s W = 60 s):
+
+| link, notice | ρ | planner | recent | largest | random | oracle |
+|---|---|---|---|---|---|---|
+| 250 MB/s, 10–15 s | 0.07–0.12 | 0 | 0 | 0 | 0 | 0 |
+| 250 MB/s, 30 s | 0.26 | 0.05 | 0.05 | 0.06 | 0.05 | 0.11 |
+| 250 MB/s, 60 s | 0.53 | 3.09 | 1.77 | 4.26 | 3.62 | 5.34 |
+| 1000 MB/s, 10 s | 0.29 | 0.28 | 0.15 | 0.35 | 0.28 | 0.44 |
+| 1000 MB/s, 15 s | 0.47 | 0.84 | 0.85 | 1.04 | 1.27 | 2.11 |
+| 1000 MB/s, 30 s | 0.97 | 1.76 | 1.80 | 1.98 | 2.82 | 3.19 |
+
+- **No planner advantage.** Every paired planner-vs-{recent, largest, random} difference
+  is inside its 95% interval, and the planner comes out ahead and behind about equally
+  often. With only 2–4 sessions per snapshot, many cells are exact ties.
+- **The oracle saves 1.5–2× more than any policy.** The headroom is in knowing *which*
+  sessions return, and the planner's recency-based reuse estimate does not capture it.
+  This differs from the simulator, where an oracle reuse estimate added little (phase1c
+  §3). The likely reason is the mix: these snapshots hold 2–4 sessions of which about
+  half never return, so picking the right ones matters more than on a full node, where
+  about two-thirds of the rebuild cost belongs to returning sessions. That is a
+  plausible explanation, not a tested one.
+- **At very tight budgets nothing is worth saving** (≤ 15 s at 250 MB/s): too little
+  leaves, and for 8B restore is near break-even, so value is ~0 for every policy.
+- **Hardware vs. offline prediction.** At 250 MB/s the run matches the prediction made
+  before launch almost exactly (e.g. W = 60 s: 3.09/1.77/4.26 measured vs 3.06/1.76/4.22
+  predicted for planner/recent/largest on the same 10 snapshots). At 1000 MB/s it saves
+  2.5–4× less, for two reasons:
+  - *Harness limit (W ≥ 30 s):* flushes submitted ~27 GB but the memory node exports
+    20 GB of RAM, so only ~70% of blocks were confirmed. A larger export is needed.
+  - *Unexplained (W = 15 s):* 0.84 vs 2.17 predicted, although every block was confirmed
+    2 s before the deadline. Not yet isolated.
+- **Deadline behaviour held across all 352 flushes:** in every capacity-unbound cell the
+  flush finished about 2 s before the deadline, which is the planner's safety margin.
+
 ## 3. What this means for the claims
 - The Phase 3 design is implementable out of tree, against vLLM's real tiering code,
   without a fork, and it is correct (parity).

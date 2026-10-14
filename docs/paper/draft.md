@@ -53,8 +53,9 @@ KVFlow) do manage idle prefixes, but against *eviction* on a live node, not node
    it (equal memory, shared-store bandwidth), and when it cannot help (W = 0).
 4. *A vLLM prototype* (§6), out of tree, with deferred cascades and a deadline flush,
    evaluated on a real L40S, flushing to local NVMe and to a separate CPU memory node
-   over the network, with output parity. The hardware runs exercise the mechanism; the
-   planner's choices under a tight budget are evaluated only in simulation.
+   over the network, with output parity. A hardware sweep on real-trace snapshots finds
+   the planner's *ordering* no better than simple orders; knowing which sessions return
+   is what matters (§6, `docs/phase3-results.md` §2e).
 
 **Not claimed.** Predicting preemption (Parcae, SkyNomad, hazardserve); exploiting
 correlated preemption (SkyServe); that KV transfer generally beats recompute
@@ -217,9 +218,13 @@ the gap. Model, GPU and precision all changed and these are single runs, so the 
   (within 0.1 s of projection), and a partially evacuated session restored with output
   parity. One complete session diverged at its second token; a repeat with
   logprobs showed an exact tie there (−3.0773 for both candidates), with restored and cold
-  logprobs within 0.01–0.05, so it is floating-point tie-breaking, not corrupted KV. Its sessions (2k–12k tokens) were below the
-  ~54k-token length where restoring 8B KV beats recomputing it, so every restore was
-  valued ≤ 0 and value-based choices remain untested (`docs/phase3-results.md` §2c).
+  logprobs within 0.01–0.05, so it is floating-point tie-breaking, not corrupted KV. - **The planner orders no better than simple rules on hardware.** A sweep on one L40S
+  (10 AgentX snapshots of 2–4 real sessions, 250 and 1000 MB/s, 10–60 s notices, 352
+  flushes) found every paired planner-vs-{recent, largest, random} difference within its
+  95% interval. An oracle that knows which sessions return saved 1.5–2× more. At 250 MB/s
+  the run matched an offline prediction closely; at 1000 MB/s with W ≥ 30 s the 20 GB
+  memory node filled, and at W = 15 s it saved less than predicted for reasons not yet
+  isolated (`docs/phase3-results.md` §2e).
 - **Single runs.** The GPU timings have no repeats or error bars.
 - **Small models are the hard case for restore.** The prototype's GPU results are for
   8B. The value of saving KV, and the crossover, should be measured at 70B on
