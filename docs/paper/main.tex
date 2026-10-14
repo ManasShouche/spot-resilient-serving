@@ -185,7 +185,8 @@ reclaim. This holds only under that memory constraint; with spare DRAM
 bursts and falls to $-25\%$, while evacuation holds $-43\%$ and hybrid $-51\%$.
 Evacuation \emph{cannot help} at $W{=}0$, and recovers only 10--27\% at 30\,s. An
 oracle reuse predictor adds no significant benefit over recency on real
-sessions\Sim. A synthetic-only finding that failure-domain-blind pools are fragile
+sessions at fleet scale\Sim; on hardware snapshots of 2--4 sessions it saved 1.5--2$\times$
+more (Section~\ref{sec:limits}), so its value depends on how few sessions compete. A synthetic-only finding that failure-domain-blind pools are fragile
 did not replicate on real sessions, and we retract it.
 
 \section{Prototype on real GPUs}\label{sec:proto}
@@ -240,7 +241,7 @@ prefill) widen the gap. Model, GPU and precision all changed and these are singl
 so the two points bracket the crossover rather than form a controlled
 sweep.
 
-\section{Limitations}
+\section{Limitations}\label{sec:limits}
 The simulator has no memory-based admission control and uses assumed network
 constants. Differences under about 20 points are within noise. Spot g6e capacity was
 unavailable throughout (placement score 1/10 in three US regions), so the GPU tests
@@ -258,8 +259,9 @@ most-recent, largest-first or random orders: every paired difference was within 
 interval, while an oracle that knows which sessions return saved 1.5--2$\times$ more. At
 250\,MB/s the run matched an offline prediction within 0.1\,s of value; at 1000\,MB/s
 with $W \ge 30$\,s the 20\,GB memory node filled, and at $W = 15$\,s it saved less than
-predicted for reasons we have not isolated. The GPU timings are single runs without error
-bars. GPU results cover 8B (L40S, L4) and one 24B AWQ model (L4); none are 70B. The
+predicted for reasons we have not isolated. The restore and evacuation timings are single runs without
+error bars; the sweep has 10 snapshots of 2--4 sessions, so it rules out only large
+planner effects. GPU results cover 8B (L40S, L4) and one 24B AWQ model (L4); none are 70B. The
 ``peer'' was a CPU
 memory node serving RAM over NFS; a surviving GPU peer reached by NIXL P2P into GPU
 memory would remove the promotion bottleneck, and is unmeasured.
