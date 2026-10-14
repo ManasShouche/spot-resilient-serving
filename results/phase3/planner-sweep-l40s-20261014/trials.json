@@ -1,0 +1,319 @@
+{
+ "trace": "agentx.jsonl",
+ "seed": 0,
+ "workload_sessions": 1600,
+ "capacity_tokens": 240000,
+ "max_context": 120000,
+ "trials": [
+  {
+   "snapshot": 0,
+   "t_s": 6000.0,
+   "node": "az-b-n1",
+   "node_sessions": 37,
+   "sessions": [
+    {
+     "tokens": 77933,
+     "idle_s": 69.6,
+     "returns": true,
+     "capped": false
+    },
+    {
+     "tokens": 96062,
+     "idle_s": 25.0,
+     "returns": false,
+     "capped": false
+    }
+   ]
+  },
+  {
+   "snapshot": 1,
+   "t_s": 6300.0,
+   "node": "az-a-n2",
+   "node_sessions": 34,
+   "sessions": [
+    {
+     "tokens": 120000,
+     "idle_s": 99.0,
+     "returns": true,
+     "capped": true
+    },
+    {
+     "tokens": 120000,
+     "idle_s": 346.2,
+     "returns": true,
+     "capped": true
+    }
+   ]
+  },
+  {
+   "snapshot": 2,
+   "t_s": 3600.0,
+   "node": "az-c-n2",
+   "node_sessions": 31,
+   "sessions": [
+    {
+     "tokens": 103101,
+     "idle_s": 289.4,
+     "returns": false,
+     "capped": false
+    },
+    {
+     "tokens": 53624,
+     "idle_s": 42.3,
+     "returns": true,
+     "capped": false
+    },
+    {
+     "tokens": 50772,
+     "idle_s": 1580.9,
+     "returns": true,
+     "capped": false
+    }
+   ]
+  },
+  {
+   "snapshot": 3,
+   "t_s": 5100.0,
+   "node": "az-b-n2",
+   "node_sessions": 37,
+   "sessions": [
+    {
+     "tokens": 120000,
+     "idle_s": 60.9,
+     "returns": false,
+     "capped": true
+    },
+    {
+     "tokens": 73827,
+     "idle_s": 919.8,
+     "returns": true,
+     "capped": false
+    },
+    {
+     "tokens": 43530,
+     "idle_s": 694.3,
+     "returns": true,
+     "capped": false
+    }
+   ]
+  },
+  {
+   "snapshot": 4,
+   "t_s": 6900.0,
+   "node": "az-b-n3",
+   "node_sessions": 38,
+   "sessions": [
+    {
+     "tokens": 108318,
+     "idle_s": 52.0,
+     "returns": false,
+     "capped": false
+    },
+    {
+     "tokens": 91375,
+     "idle_s": 238.6,
+     "returns": true,
+     "capped": false
+    }
+   ]
+  },
+  {
+   "snapshot": 5,
+   "t_s": 6600.0,
+   "node": "az-c-n3",
+   "node_sessions": 41,
+   "sessions": [
+    {
+     "tokens": 120000,
+     "idle_s": 625.2,
+     "returns": false,
+     "capped": true
+    },
+    {
+     "tokens": 89129,
+     "idle_s": 186.3,
+     "returns": false,
+     "capped": false
+    }
+   ]
+  },
+  {
+   "snapshot": 6,
+   "t_s": 6000.0,
+   "node": "az-c-n2",
+   "node_sessions": 37,
+   "sessions": [
+    {
+     "tokens": 68626,
+     "idle_s": 28.6,
+     "returns": true,
+     "capped": false
+    },
+    {
+     "tokens": 82223,
+     "idle_s": 1220.8,
+     "returns": true,
+     "capped": false
+    },
+    {
+     "tokens": 57420,
+     "idle_s": 863.9,
+     "returns": true,
+     "capped": false
+    }
+   ]
+  },
+  {
+   "snapshot": 7,
+   "t_s": 5400.0,
+   "node": "az-b-n1",
+   "node_sessions": 36,
+   "sessions": [
+    {
+     "tokens": 95706,
+     "idle_s": 130.9,
+     "returns": true,
+     "capped": false
+    },
+    {
+     "tokens": 120000,
+     "idle_s": 472.5,
+     "returns": true,
+     "capped": true
+    }
+   ]
+  },
+  {
+   "snapshot": 8,
+   "t_s": 6600.0,
+   "node": "az-c-n1",
+   "node_sessions": 35,
+   "sessions": [
+    {
+     "tokens": 120000,
+     "idle_s": 171.0,
+     "returns": true,
+     "capped": true
+    },
+    {
+     "tokens": 66399,
+     "idle_s": 169.6,
+     "returns": false,
+     "capped": false
+    }
+   ]
+  },
+  {
+   "snapshot": 9,
+   "t_s": 5700.0,
+   "node": "az-c-n0",
+   "node_sessions": 32,
+   "sessions": [
+    {
+     "tokens": 120000,
+     "idle_s": 288.7,
+     "returns": true,
+     "capped": true
+    },
+    {
+     "tokens": 120000,
+     "idle_s": 113.6,
+     "returns": false,
+     "capped": true
+    }
+   ]
+  },
+  {
+   "snapshot": 10,
+   "t_s": 4800.0,
+   "node": "az-b-n3",
+   "node_sessions": 34,
+   "sessions": [
+    {
+     "tokens": 102944,
+     "idle_s": 112.8,
+     "returns": true,
+     "capped": false
+    },
+    {
+     "tokens": 120000,
+     "idle_s": 156.4,
+     "returns": false,
+     "capped": true
+    }
+   ]
+  },
+  {
+   "snapshot": 11,
+   "t_s": 6900.0,
+   "node": "az-b-n2",
+   "node_sessions": 39,
+   "sessions": [
+    {
+     "tokens": 54926,
+     "idle_s": 411.7,
+     "returns": false,
+     "capped": false
+    },
+    {
+     "tokens": 35387,
+     "idle_s": 211.8,
+     "returns": true,
+     "capped": false
+    },
+    {
+     "tokens": 66399,
+     "idle_s": 843.4,
+     "returns": false,
+     "capped": false
+    },
+    {
+     "tokens": 58479,
+     "idle_s": 632.8,
+     "returns": true,
+     "capped": false
+    }
+   ]
+  },
+  {
+   "snapshot": 12,
+   "t_s": 4200.0,
+   "node": "az-c-n3",
+   "node_sessions": 33,
+   "sessions": [
+    {
+     "tokens": 120000,
+     "idle_s": 150.2,
+     "returns": false,
+     "capped": true
+    },
+    {
+     "tokens": 120000,
+     "idle_s": 82.9,
+     "returns": true,
+     "capped": true
+    }
+   ]
+  },
+  {
+   "snapshot": 13,
+   "t_s": 5400.0,
+   "node": "az-a-n0",
+   "node_sessions": 36,
+   "sessions": [
+    {
+     "tokens": 73503,
+     "idle_s": 1028.5,
+     "returns": true,
+     "capped": false
+    },
+    {
+     "tokens": 120000,
+     "idle_s": 484.3,
+     "returns": false,
+     "capped": true
+    }
+   ]
+  }
+ ]
+}

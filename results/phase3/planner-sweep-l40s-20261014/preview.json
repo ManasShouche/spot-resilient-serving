@@ -1,0 +1,398 @@
+{
+ "summary": {
+  "250MB/s W=10s": {
+   "rho_mean": 0.072,
+   "planner": {
+    "n": 14,
+    "mean": 0.0,
+    "ci95": 0.0
+   },
+   "recent": {
+    "n": 14,
+    "mean": 0.0,
+    "ci95": 0.0
+   },
+   "largest": {
+    "n": 14,
+    "mean": 0.0,
+    "ci95": 0.0
+   },
+   "random": {
+    "n": 14,
+    "mean": 0.0,
+    "ci95": 0.0
+   },
+   "oracle": {
+    "n": 14,
+    "mean": 0.0,
+    "ci95": 0.0
+   }
+  },
+  "250MB/s W=15s": {
+   "rho_mean": 0.117,
+   "planner": {
+    "n": 14,
+    "mean": 0.0,
+    "ci95": 0.0
+   },
+   "recent": {
+    "n": 14,
+    "mean": 0.0,
+    "ci95": 0.0
+   },
+   "largest": {
+    "n": 14,
+    "mean": 0.0,
+    "ci95": 0.0
+   },
+   "random": {
+    "n": 14,
+    "mean": 0.0,
+    "ci95": 0.0
+   },
+   "oracle": {
+    "n": 14,
+    "mean": 0.0,
+    "ci95": 0.0
+   }
+  },
+  "250MB/s W=30s": {
+   "rho_mean": 0.253,
+   "planner": {
+    "n": 14,
+    "mean": 0.03,
+    "ci95": 0.02
+   },
+   "recent": {
+    "n": 14,
+    "mean": 0.04,
+    "ci95": 0.02
+   },
+   "largest": {
+    "n": 14,
+    "mean": 0.03,
+    "ci95": 0.02
+   },
+   "random": {
+    "n": 14,
+    "mean": 0.05,
+    "ci95": 0.02
+   },
+   "oracle": {
+    "n": 14,
+    "mean": 0.08,
+    "ci95": 0.01
+   }
+  },
+  "250MB/s W=60s": {
+   "rho_mean": 0.523,
+   "planner": {
+    "n": 14,
+    "mean": 2.87,
+    "ci95": 2.38
+   },
+   "recent": {
+    "n": 14,
+    "mean": 2.5,
+    "ci95": 2.09
+   },
+   "largest": {
+    "n": 14,
+    "mean": 3.02,
+    "ci95": 2.38
+   },
+   "random": {
+    "n": 14,
+    "mean": 3.27,
+    "ci95": 2.18
+   },
+   "oracle": {
+    "n": 14,
+    "mean": 5.23,
+    "ci95": 2.11
+   }
+  },
+  "1000MB/s W=10s": {
+   "rho_mean": 0.288,
+   "planner": {
+    "n": 14,
+    "mean": 0.28,
+    "ci95": 0.21
+   },
+   "recent": {
+    "n": 14,
+    "mean": 0.29,
+    "ci95": 0.21
+   },
+   "largest": {
+    "n": 14,
+    "mean": 0.28,
+    "ci95": 0.21
+   },
+   "random": {
+    "n": 14,
+    "mean": 0.4,
+    "ci95": 0.22
+   },
+   "oracle": {
+    "n": 14,
+    "mean": 0.67,
+    "ci95": 0.14
+   }
+  },
+  "1000MB/s W=15s": {
+   "rho_mean": 0.469,
+   "planner": {
+    "n": 14,
+    "mean": 2.04,
+    "ci95": 1.66
+   },
+   "recent": {
+    "n": 14,
+    "mean": 2.05,
+    "ci95": 1.66
+   },
+   "largest": {
+    "n": 14,
+    "mean": 2.24,
+    "ci95": 1.72
+   },
+   "random": {
+    "n": 14,
+    "mean": 3.09,
+    "ci95": 1.7
+   },
+   "oracle": {
+    "n": 14,
+    "mean": 4.2,
+    "ci95": 1.5
+   }
+  },
+  "1000MB/s W=30s": {
+   "rho_mean": 1.01,
+   "planner": {
+    "n": 14,
+    "mean": 6.49,
+    "ci95": 3.29
+   },
+   "recent": {
+    "n": 14,
+    "mean": 6.46,
+    "ci95": 3.36
+   },
+   "largest": {
+    "n": 14,
+    "mean": 6.49,
+    "ci95": 3.29
+   },
+   "random": {
+    "n": 14,
+    "mean": 6.01,
+    "ci95": 3.26
+   },
+   "oracle": {
+    "n": 14,
+    "mean": 7.1,
+    "ci95": 3.38
+   }
+  },
+  "1000MB/s W=60s": {
+   "rho_mean": 2.092,
+   "planner": {
+    "n": 14,
+    "mean": 7.59,
+    "ci95": 3.94
+   },
+   "recent": {
+    "n": 14,
+    "mean": 7.59,
+    "ci95": 3.94
+   },
+   "largest": {
+    "n": 14,
+    "mean": 7.59,
+    "ci95": 3.94
+   },
+   "random": {
+    "n": 14,
+    "mean": 7.59,
+    "ci95": 3.94
+   },
+   "oracle": {
+    "n": 14,
+    "mean": 7.59,
+    "ci95": 3.94
+   }
+  }
+ },
+ "paired": {
+  "250MB/s W=10s planner-recent": {
+   "n": 14,
+   "mean": 0.0,
+   "ci95": 0.0,
+   "planner_ahead": 0,
+   "behind": 0
+  },
+  "250MB/s W=10s planner-largest": {
+   "n": 14,
+   "mean": 0.0,
+   "ci95": 0.0,
+   "planner_ahead": 0,
+   "behind": 0
+  },
+  "250MB/s W=10s planner-random": {
+   "n": 14,
+   "mean": 0.0,
+   "ci95": 0.0,
+   "planner_ahead": 0,
+   "behind": 0
+  },
+  "250MB/s W=15s planner-recent": {
+   "n": 14,
+   "mean": 0.0,
+   "ci95": 0.0,
+   "planner_ahead": 0,
+   "behind": 0
+  },
+  "250MB/s W=15s planner-largest": {
+   "n": 14,
+   "mean": 0.0,
+   "ci95": 0.0,
+   "planner_ahead": 0,
+   "behind": 0
+  },
+  "250MB/s W=15s planner-random": {
+   "n": 14,
+   "mean": 0.0,
+   "ci95": 0.0,
+   "planner_ahead": 0,
+   "behind": 0
+  },
+  "250MB/s W=30s planner-recent": {
+   "n": 14,
+   "mean": -0.01,
+   "ci95": 0.02,
+   "planner_ahead": 1,
+   "behind": 2
+  },
+  "250MB/s W=30s planner-largest": {
+   "n": 14,
+   "mean": 0.0,
+   "ci95": 0.02,
+   "planner_ahead": 1,
+   "behind": 1
+  },
+  "250MB/s W=30s planner-random": {
+   "n": 14,
+   "mean": -0.02,
+   "ci95": 0.03,
+   "planner_ahead": 2,
+   "behind": 5
+  },
+  "250MB/s W=60s planner-recent": {
+   "n": 14,
+   "mean": 0.37,
+   "ci95": 1.89,
+   "planner_ahead": 2,
+   "behind": 2
+  },
+  "250MB/s W=60s planner-largest": {
+   "n": 14,
+   "mean": -0.14,
+   "ci95": 2.04,
+   "planner_ahead": 1,
+   "behind": 2
+  },
+  "250MB/s W=60s planner-random": {
+   "n": 14,
+   "mean": -0.4,
+   "ci95": 1.93,
+   "planner_ahead": 1,
+   "behind": 5
+  },
+  "1000MB/s W=10s planner-recent": {
+   "n": 14,
+   "mean": -0.01,
+   "ci95": 0.17,
+   "planner_ahead": 1,
+   "behind": 2
+  },
+  "1000MB/s W=10s planner-largest": {
+   "n": 14,
+   "mean": 0.0,
+   "ci95": 0.17,
+   "planner_ahead": 1,
+   "behind": 1
+  },
+  "1000MB/s W=10s planner-random": {
+   "n": 14,
+   "mean": -0.11,
+   "ci95": 0.15,
+   "planner_ahead": 0,
+   "behind": 2
+  },
+  "1000MB/s W=15s planner-recent": {
+   "n": 14,
+   "mean": -0.01,
+   "ci95": 1.45,
+   "planner_ahead": 1,
+   "behind": 2
+  },
+  "1000MB/s W=15s planner-largest": {
+   "n": 14,
+   "mean": -0.19,
+   "ci95": 1.48,
+   "planner_ahead": 1,
+   "behind": 3
+  },
+  "1000MB/s W=15s planner-random": {
+   "n": 14,
+   "mean": -1.05,
+   "ci95": 1.21,
+   "planner_ahead": 0,
+   "behind": 4
+  },
+  "1000MB/s W=30s planner-recent": {
+   "n": 14,
+   "mean": 0.03,
+   "ci95": 0.46,
+   "planner_ahead": 2,
+   "behind": 1
+  },
+  "1000MB/s W=30s planner-largest": {
+   "n": 14,
+   "mean": 0.0,
+   "ci95": 1.35,
+   "planner_ahead": 1,
+   "behind": 1
+  },
+  "1000MB/s W=30s planner-random": {
+   "n": 14,
+   "mean": 0.48,
+   "ci95": 1.03,
+   "planner_ahead": 2,
+   "behind": 1
+  },
+  "1000MB/s W=60s planner-recent": {
+   "n": 14,
+   "mean": 0.0,
+   "ci95": 0.0,
+   "planner_ahead": 0,
+   "behind": 0
+  },
+  "1000MB/s W=60s planner-largest": {
+   "n": 14,
+   "mean": 0.0,
+   "ci95": 0.0,
+   "planner_ahead": 0,
+   "behind": 0
+  },
+  "1000MB/s W=60s planner-random": {
+   "n": 14,
+   "mean": 0.0,
+   "ci95": 0.0,
+   "planner_ahead": 0,
+   "behind": 0
+  }
+ }
+}

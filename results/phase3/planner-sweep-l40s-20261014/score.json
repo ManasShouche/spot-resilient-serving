@@ -1,0 +1,357 @@
+{
+ "summary": {
+  "250MB/s W=10s": {
+   "rho_mean": 0.073,
+   "planner": {
+    "n": 10,
+    "mean": 0.0,
+    "ci95": 0.0
+   },
+   "recent": {
+    "n": 10,
+    "mean": 0.0,
+    "ci95": 0.0
+   },
+   "largest": {
+    "n": 10,
+    "mean": 0.0,
+    "ci95": 0.0
+   },
+   "random": {
+    "n": 10,
+    "mean": 0.0,
+    "ci95": 0.0
+   },
+   "oracle": {
+    "n": 10,
+    "mean": 0.0,
+    "ci95": 0.0
+   }
+  },
+  "250MB/s W=15s": {
+   "rho_mean": 0.119,
+   "planner": {
+    "n": 10,
+    "mean": 0.0,
+    "ci95": 0.0
+   },
+   "recent": {
+    "n": 10,
+    "mean": 0.0,
+    "ci95": 0.0
+   },
+   "largest": {
+    "n": 10,
+    "mean": 0.0,
+    "ci95": 0.0
+   },
+   "random": {
+    "n": 10,
+    "mean": 0.0,
+    "ci95": 0.0
+   },
+   "oracle": {
+    "n": 10,
+    "mean": 0.0,
+    "ci95": 0.0
+   }
+  },
+  "250MB/s W=30s": {
+   "rho_mean": 0.255,
+   "planner": {
+    "n": 10,
+    "mean": 0.05,
+    "ci95": 0.04
+   },
+   "recent": {
+    "n": 10,
+    "mean": 0.05,
+    "ci95": 0.04
+   },
+   "largest": {
+    "n": 10,
+    "mean": 0.06,
+    "ci95": 0.05
+   },
+   "random": {
+    "n": 10,
+    "mean": 0.05,
+    "ci95": 0.04
+   },
+   "oracle": {
+    "n": 10,
+    "mean": 0.11,
+    "ci95": 0.03
+   }
+  },
+  "250MB/s W=60s": {
+   "rho_mean": 0.529,
+   "planner": {
+    "n": 10,
+    "mean": 3.09,
+    "ci95": 3.3
+   },
+   "recent": {
+    "n": 10,
+    "mean": 1.77,
+    "ci95": 2.44
+   },
+   "largest": {
+    "n": 10,
+    "mean": 4.26,
+    "ci95": 3.46
+   },
+   "random": {
+    "n": 10,
+    "mean": 3.62,
+    "ci95": 3.11
+   },
+   "oracle": {
+    "n": 10,
+    "mean": 5.34,
+    "ci95": 2.92
+   }
+  },
+  "1000MB/s W=10s": {
+   "rho_mean": 0.287,
+   "planner": {
+    "n": 10,
+    "mean": 0.28,
+    "ci95": 0.26
+   },
+   "recent": {
+    "n": 10,
+    "mean": 0.15,
+    "ci95": 0.21
+   },
+   "largest": {
+    "n": 10,
+    "mean": 0.35,
+    "ci95": 0.27
+   },
+   "random": {
+    "n": 10,
+    "mean": 0.28,
+    "ci95": 0.26
+   },
+   "oracle": {
+    "n": 10,
+    "mean": 0.44,
+    "ci95": 0.25
+   }
+  },
+  "1000MB/s W=15s": {
+   "rho_mean": 0.467,
+   "planner": {
+    "n": 10,
+    "mean": 0.84,
+    "ci95": 1.5
+   },
+   "recent": {
+    "n": 10,
+    "mean": 0.85,
+    "ci95": 1.5
+   },
+   "largest": {
+    "n": 10,
+    "mean": 1.04,
+    "ci95": 1.63
+   },
+   "random": {
+    "n": 10,
+    "mean": 1.27,
+    "ci95": 1.63
+   },
+   "oracle": {
+    "n": 10,
+    "mean": 2.11,
+    "ci95": 1.78
+   }
+  },
+  "1000MB/s W=30s": {
+   "rho_mean": 0.973,
+   "planner": {
+    "n": 10,
+    "mean": 1.76,
+    "ci95": 2.88
+   },
+   "recent": {
+    "n": 8,
+    "mean": 1.8,
+    "ci95": 3.55
+   },
+   "largest": {
+    "n": 8,
+    "mean": 1.98,
+    "ci95": 3.6
+   },
+   "random": {
+    "n": 8,
+    "mean": 2.82,
+    "ci95": 3.71
+   },
+   "oracle": {
+    "n": 8,
+    "mean": 3.19,
+    "ci95": 3.61
+   }
+  },
+  "1000MB/s W=60s": {
+   "rho_mean": 2.082,
+   "planner": {
+    "n": 10,
+    "mean": 2.73,
+    "ci95": 3.08
+   }
+  }
+ },
+ "paired": {
+  "250MB/s W=10s planner-recent": {
+   "n": 10,
+   "mean": 0.0,
+   "ci95": 0.0,
+   "planner_ahead": 0,
+   "behind": 0
+  },
+  "250MB/s W=10s planner-largest": {
+   "n": 10,
+   "mean": 0.0,
+   "ci95": 0.0,
+   "planner_ahead": 0,
+   "behind": 0
+  },
+  "250MB/s W=10s planner-random": {
+   "n": 10,
+   "mean": 0.0,
+   "ci95": 0.0,
+   "planner_ahead": 0,
+   "behind": 0
+  },
+  "250MB/s W=15s planner-recent": {
+   "n": 10,
+   "mean": 0.0,
+   "ci95": 0.0,
+   "planner_ahead": 0,
+   "behind": 0
+  },
+  "250MB/s W=15s planner-largest": {
+   "n": 10,
+   "mean": 0.0,
+   "ci95": 0.0,
+   "planner_ahead": 0,
+   "behind": 0
+  },
+  "250MB/s W=15s planner-random": {
+   "n": 10,
+   "mean": 0.0,
+   "ci95": 0.0,
+   "planner_ahead": 0,
+   "behind": 0
+  },
+  "250MB/s W=30s planner-recent": {
+   "n": 10,
+   "mean": 0.0,
+   "ci95": 0.04,
+   "planner_ahead": 1,
+   "behind": 1
+  },
+  "250MB/s W=30s planner-largest": {
+   "n": 10,
+   "mean": -0.01,
+   "ci95": 0.03,
+   "planner_ahead": 0,
+   "behind": 1
+  },
+  "250MB/s W=30s planner-random": {
+   "n": 10,
+   "mean": 0.0,
+   "ci95": 0.04,
+   "planner_ahead": 1,
+   "behind": 1
+  },
+  "250MB/s W=60s planner-recent": {
+   "n": 10,
+   "mean": 1.31,
+   "ci95": 2.26,
+   "planner_ahead": 2,
+   "behind": 1
+  },
+  "250MB/s W=60s planner-largest": {
+   "n": 10,
+   "mean": -1.17,
+   "ci95": 2.2,
+   "planner_ahead": 0,
+   "behind": 2
+  },
+  "250MB/s W=60s planner-random": {
+   "n": 10,
+   "mean": -0.54,
+   "ci95": 3.38,
+   "planner_ahead": 1,
+   "behind": 3
+  },
+  "1000MB/s W=10s planner-recent": {
+   "n": 10,
+   "mean": 0.13,
+   "ci95": 0.22,
+   "planner_ahead": 2,
+   "behind": 1
+  },
+  "1000MB/s W=10s planner-largest": {
+   "n": 10,
+   "mean": -0.07,
+   "ci95": 0.16,
+   "planner_ahead": 0,
+   "behind": 1
+  },
+  "1000MB/s W=10s planner-random": {
+   "n": 10,
+   "mean": 0.0,
+   "ci95": 0.34,
+   "planner_ahead": 2,
+   "behind": 2
+  },
+  "1000MB/s W=15s planner-recent": {
+   "n": 10,
+   "mean": -0.01,
+   "ci95": 0.03,
+   "planner_ahead": 0,
+   "behind": 1
+  },
+  "1000MB/s W=15s planner-largest": {
+   "n": 10,
+   "mean": -0.2,
+   "ci95": 0.45,
+   "planner_ahead": 0,
+   "behind": 1
+  },
+  "1000MB/s W=15s planner-random": {
+   "n": 10,
+   "mean": -0.44,
+   "ci95": 0.66,
+   "planner_ahead": 0,
+   "behind": 2
+  },
+  "1000MB/s W=30s planner-recent": {
+   "n": 8,
+   "mean": 0.4,
+   "ci95": 0.98,
+   "planner_ahead": 1,
+   "behind": 1
+  },
+  "1000MB/s W=30s planner-largest": {
+   "n": 8,
+   "mean": 0.22,
+   "ci95": 0.52,
+   "planner_ahead": 1,
+   "behind": 0
+  },
+  "1000MB/s W=30s planner-random": {
+   "n": 8,
+   "mean": -0.62,
+   "ci95": 1.59,
+   "planner_ahead": 1,
+   "behind": 1
+  }
+ }
+}
