@@ -53,9 +53,11 @@ KVFlow) do manage idle prefixes, but against *eviction* on a live node, not node
    it (equal memory, shared-store bandwidth), and when it cannot help (W = 0).
 4. *A vLLM prototype* (§6), out of tree, with deferred cascades and a deadline flush,
    evaluated on a real L40S, flushing to local NVMe and to a separate CPU memory node
-   over the network, with output parity. A hardware sweep on real-trace snapshots finds
-   the planner's *ordering* no better than simple orders; knowing which sessions return
-   is what matters (§6, `docs/phase3-results.md` §2e).
+   over the network, with output parity. On 148 real-trace snapshots the planner beats
+   most-recent and random orders and ties largest-first (a 10-snapshot hardware sweep
+   was too small to show it). Knowing which sessions return is the remaining lever: a
+   learned return predictor (AUC 0.79 vs. 0.59 for recency) closes only about a fifth of
+   the gap to an oracle (`docs/returnpred-results.md`).
 
 **Not claimed.** Predicting preemption (Parcae, SkyNomad, hazardserve); exploiting
 correlated preemption (SkyServe); that KV transfer generally beats recompute
@@ -222,13 +224,17 @@ the gap. Model, GPU and precision all changed and these are single runs, so the 
   parity. One complete session diverged at its second token; a repeat with
   logprobs showed an exact tie there (−3.0773 for both candidates), with restored and cold
   logprobs within 0.01–0.05, so it is floating-point tie-breaking, not corrupted KV.
-- **The planner orders no better than simple rules on hardware.** A sweep on one L40S
+- **The hardware planner sweep was underpowered.** A sweep on one L40S
   (10 AgentX snapshots of 2–4 real sessions, 250 and 1000 MB/s, 10–60 s notices, 352
   flushes) found every paired planner-vs-{recent, largest, random} difference within its
   95% interval. An oracle that knows which sessions return saved 1.5–2× more. At 250 MB/s
   the run matched an offline prediction closely; at 1000 MB/s with W ≥ 30 s the 20 GB
   memory node filled, and at W = 15 s it saved less than predicted for reasons not yet
-  isolated (`docs/phase3-results.md` §2e).
+  isolated (`docs/phase3-results.md` §2e). Re-scored offline on 148 snapshots, the
+  planner beats most-recent and random (e.g. +1.29 ± 0.54 s and +1.78 ± 0.66 s at
+  250 MB/s, 60 s) and ties largest-first. A learned return predictor (AUC 0.79 vs 0.59
+  for recency) adds only +0.22 ± 0.42 s of a possible +1.13 s there
+  (`docs/returnpred-results.md`).
 - **Single runs.** The restore and evacuation timings are single runs without error bars;
   only the planner sweep has repeats (10 snapshots), and with 2–4 sessions per snapshot it
   can rule out only large planner effects.

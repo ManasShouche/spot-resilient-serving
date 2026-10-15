@@ -123,6 +123,9 @@ class FlushRequest:
     replay a trace snapshot whose sessions were all prefilled moments ago."""
     tier_bytes_per_s: float | None = None
     """Write rate to plan with for this flush, if the link changed since startup."""
+    reuse_p: dict[str, float] | None = None
+    """Per-session P(reuse) to plan with instead of the recency estimate (e.g. from a
+    learned predictor, kvevac.returnpred)."""
     reset: bool = False
     """Forget that the `only` sessions' blocks were already shipped (the caller emptied
     the tier), so the same resident KV can be flushed again under another policy."""
@@ -169,6 +172,8 @@ def read_flush_request(path: Path, last_seq: int) -> FlushRequest | None:
                         idle_s={str(k): float(v) for k, v in idle.items()} if idle else None,
                         tier_bytes_per_s=float(raw["tier_bytes_per_s"])
                         if raw.get("tier_bytes_per_s") else None,
+                        reuse_p={str(k): float(v) for k, v in raw["reuse_p"].items()}
+                        if raw.get("reuse_p") else None,
                         reset=bool(raw.get("reset", False)))
 
 
@@ -207,7 +212,8 @@ def plan_flush(index: SessionIndex, request: FlushRequest, params: FlushParams, 
     pending = {sid: chain.ordered() for sid, chain in index.sessions.items()
                if allowed is None or sid in allowed}
     order = request.sessions if request.sessions is not None else \
-        session_priority(index, params, window, now, only=allowed, idle_s=request.idle_s)
+        session_priority(index, params, window, now, only=allowed, idle_s=request.idle_s,
+                         reuse_p=request.reuse_p)
     if allowed is not None:
         order = [sid for sid in order if sid in allowed]
     flush = flush_order(order, pending, block_bytes=params.block_bytes,
@@ -217,7 +223,8 @@ def plan_flush(index: SessionIndex, request: FlushRequest, params: FlushParams, 
 
 def session_priority(index: SessionIndex, params: FlushParams, window_s: float,
                      now: float, *, only: set[str] | None = None,
-                     idle_s: dict[str, float] | None = None) -> list[str]:
+                     idle_s: dict[str, float] | None = None,
+                     reuse_p: dict[str, float] | None = None) -> list[str]:
     """Rank sessions for the flush: recompute avoided x P(reuse) per byte of tier
     bandwidth (kvevac.planner's value density).
 
@@ -238,8 +245,8 @@ def session_priority(index: SessionIndex, params: FlushParams, window_s: float,
         if missing == 0:
             continue
         idle = idle_s[sid] if idle_s and sid in idle_s else now - chain.last_used
-        objects.append(KVObject(sid, missing * params.block_tokens,
-                                reuse_prob=recency_reuse_prob(idle)))
+        p = reuse_p[sid] if reuse_p and sid in reuse_p else recency_reuse_prob(idle)
+        objects.append(KVObject(sid, missing * params.block_tokens, reuse_prob=p))
     reload = LinkProfile("restore", params.restore_bytes_per_s, params.tier_setup_s) \
         if params.restore_bytes_per_s else None
     dest = Destination("tier", "remote", 10**15, link, remote_store=True,

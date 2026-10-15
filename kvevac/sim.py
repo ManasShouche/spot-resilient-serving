@@ -523,7 +523,9 @@ class Simulation:
             if self.snapshot_sessions:
                 detail.append({"id": session_id, "tokens": tokens, "returns": returns,
                                "in_flight": session_id in node.in_flight,
-                               "idle_s": round(now - state.last_active, 1)})
+                               "idle_s": round(now - state.last_active, 1),
+                               "turns_done": state.next_turn,
+                               "age_s": round(now - state.session.start_s, 1)})
             if returns:
                 expected_s += cost
             if session_id in node.in_flight:
