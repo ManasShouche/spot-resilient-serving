@@ -73,9 +73,10 @@ sessions~(\S\ref{sec:design}).
 and when it cannot help (\S\ref{sec:regime}).
 (4)~An out-of-tree vLLM~\cite{vllm} prototype, evaluated on a real L40S, flushing to
 local NVMe and to a separate CPU memory node over the network, with output parity
-(\S\ref{sec:proto}). A hardware sweep on real-trace snapshots finds the planner's
-\emph{ordering} no better than simple orders; knowing which sessions return is what
-matters.
+(\S\ref{sec:proto}). On 148 real-trace snapshots the planner beats most-recent and
+random orders and ties largest-first; a 10-snapshot hardware sweep was too small to show
+it. Knowing which sessions return is the remaining lever: a learned return predictor
+(AUC 0.79 vs.\ 0.59 for recency) closes only about a fifth of the gap to an oracle.
 
 \paragraph{Not claimed.} Predicting preemption~\cite{parcae,skynomad,hazardserve};
 exploiting correlated preemption~\cite{skyserve}; that KV transfer generally beats
@@ -259,7 +260,14 @@ most-recent, largest-first or random orders: every paired difference was within 
 interval, while an oracle that knows which sessions return saved 1.5--2$\times$ more. At
 250\,MB/s the run matched an offline prediction within 0.1\,s of value; at 1000\,MB/s
 with $W \ge 30$\,s the 20\,GB memory node filled, and at $W = 15$\,s it saved less than
-predicted for reasons we have not isolated. The restore and evacuation timings are single runs without
+predicted for reasons we have not isolated. Re-scored offline on 148 snapshots (the
+offline model matched the hardware at 250\,MB/s), the planner beats most-recent and
+random orders (e.g.\ $+1.29 \pm 0.54$\,s and $+1.78 \pm 0.66$\,s per snapshot at
+250\,MB/s, 60\,s) and ties largest-first, so the 10-snapshot sweep was underpowered. A
+gradient-boosted return predictor over each session's history, cross-fitted by source
+session, ranks returns far better than the recency curve (AUC 0.79 vs.\ 0.59) but adds
+only $+0.22 \pm 0.42$\,s of a possible $+1.13$\,s there (ahead in 15 snapshots, behind in
+5). The restore and evacuation timings are single runs without
 error bars; the sweep has 10 snapshots of 2--4 sessions, so it rules out only large
 planner effects. GPU results cover 8B (L40S, L4) and one 24B AWQ model (L4); none are 70B. The
 ``peer'' was a CPU

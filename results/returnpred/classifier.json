@@ -1,0 +1,24 @@
+{
+ "rows": 1639,
+ "positive_rate": 0.704,
+ "constant": {
+  "brier": 0.2083,
+  "log_loss": 0.6074,
+  "auc": 0.5
+ },
+ "recency": {
+  "auc": 0.5898,
+  "brier": 0.2674,
+  "log_loss": 0.7476
+ },
+ "logistic": {
+  "auc": 0.6639,
+  "brier": 0.2074,
+  "log_loss": 0.6046
+ },
+ "boosted": {
+  "auc": 0.7875,
+  "brier": 0.2076,
+  "log_loss": 0.7172
+ }
+}

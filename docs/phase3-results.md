@@ -211,6 +211,11 @@ reached 1000 MB/s W = 60 s):
 - **Deadline behaviour held across all 352 flushes:** in every capacity-unbound cell the
   flush finished about 2 s before the deadline, which is the planner's safety margin.
 
+**Update (15 October):** re-scored offline on 148 snapshots, the planner *does* beat
+most-recent and random orders and ties largest-first; this sweep's 10 snapshots were
+too few to show it. A learned return predictor recovers about a fifth of the oracle
+gap. See `docs/returnpred-results.md`.
+
 ## 3. What this means for the claims
 - The Phase 3 design is implementable out of tree, against vLLM's real tiering code,
   without a fork, and it is correct (parity).
