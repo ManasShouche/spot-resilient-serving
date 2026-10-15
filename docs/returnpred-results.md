@@ -94,3 +94,8 @@ Paired planner (recency) minus baseline, 148 offline snapshots, mean ± 95%:
 - Limits: one trace (393 sessions), the 8B node only, an offline value model validated
   on hardware only at 250 MB/s, and labels of "ever returns" rather than "returns
   before this KV would be evicted anyway".
+- **The ± intervals are likely too narrow.** They are paired t-intervals that treat the
+  148 snapshots as independent, but all come from one simulation seed, consecutive
+  snapshots share idle sessions, and the 1,600 simulated sessions are resampled from 393
+  real ones. A bootstrap over source sessions, or several simulation seeds, is needed
+  before calling the planner-vs-recent/random gaps significant.

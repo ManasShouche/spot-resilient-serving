@@ -53,7 +53,8 @@ KVFlow) do manage idle prefixes, but against *eviction* on a live node, not node
    it (equal memory, shared-store bandwidth), and when it cannot help (W = 0).
 4. *A vLLM prototype* (§6), out of tree, with deferred cascades and a deadline flush,
    evaluated on a real L40S, flushing to local NVMe and to a separate CPU memory node
-   over the network, with output parity. On 148 real-trace snapshots the planner beats
+   over the network, with output parity. In an offline model of 148 real-trace snapshots
+   (checked against hardware only at 250 MB/s) the planner beats
    most-recent and random orders and ties largest-first (a 10-snapshot hardware sweep
    was too small to show it). Knowing which sessions return is the remaining lever: a
    learned return predictor (AUC 0.79 vs. 0.59 for recency) closes only about a fifth of
@@ -234,7 +235,10 @@ the gap. Model, GPU and precision all changed and these are single runs, so the 
   planner beats most-recent and random (e.g. +1.29 ± 0.54 s and +1.78 ± 0.66 s at
   250 MB/s, 60 s) and ties largest-first. A learned return predictor (AUC 0.79 vs 0.59
   for recency) adds only +0.22 ± 0.42 s of a possible +1.13 s there
-  (`docs/returnpred-results.md`).
+  (`docs/returnpred-results.md`). These intervals treat the 148 snapshots as independent,
+  but they come from one simulation and share source sessions, so they are likely too
+  narrow; and the label counts any later return, not only one while the saved KV would
+  still be used.
 - **Single runs.** The restore and evacuation timings are single runs without error bars;
   only the planner sweep has repeats (10 snapshots), and with 2–4 sessions per snapshot it
   can rule out only large planner effects.
