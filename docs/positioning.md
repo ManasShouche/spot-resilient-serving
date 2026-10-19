@@ -1,8 +1,10 @@
 # Positioning against the state of the art (October 2026)
 
+*Snapshot from 7 October 2026, written before the hardware results. For the current
+claims, see the paper ([paper/draft.md](paper/draft.md)) and the phase results docs.*
+
 This doc answers one question: **what can this project honestly claim, and what has
-to change before the claim is strong enough for a master's SOP or a workshop
-paper?** It builds on [sota-2026.md](sota-2026.md) and checks the external
+to change before the claim is strong enough for a workshop paper?** It builds on [sota-2026.md](sota-2026.md) and checks the external
 gap-analysis doc (SpotServe / Llumnix / SkyServe / Parcae era) against primary
 sources.
 
@@ -31,7 +33,7 @@ comes from abstracts and search excerpts and is marked *(abstract only)*.
    notice and the planner has nothing to decide (section 4.1). The interesting
    regime has to be built deliberately.
 5. Today this is a **simulator study with assumed constants and a synthetic
-   workload**. It is SOP-worthy as research in progress. For a workshop paper it needs
+   workload**. It is credible as research in progress. For a workshop paper it needs
    real traces, one real measurement campaign and a vLLM prototype (section 5).
 
 ## 2. Corrections to the gap-analysis doc
@@ -151,7 +153,7 @@ Inter-turn gaps of a few seconds also change the model. Most sessions are *hot*,
 CPU tiers at notice time. The synthetic generator's idle-time distribution should be
 checked against these traces.
 
-## 5. What to change to make this SOP- and paper-worthy
+## 5. What to change to make this paper-worthy
 
 **Narrow claim (use this wording):**
 
@@ -187,12 +189,9 @@ checked against these traces.
 **Realistic target.** A workshop paper (EuroMLSys, an MLSys or NeurIPS systems
 workshop, HotCloud-style) is reachable with experiments 1–6. A main-track systems
 paper would need multi-node scale and a production-trace partner, which this budget
-can't buy. For the SOP, the strongest honest story is: *found the gap after two
-reframings, built the simulator, found a counter-intuitive equal-memory result,
-then validated the constants on real hardware.* The reframings are a strength if
-the SOP says why each happened.
+can't buy.
 
-## 6. Claims to keep out of the SOP and README
+## 6. Claims to keep out of the paper and README
 - "First to predict" or "first to exploit correlated preemption" (Parcae, SkyNomad,
   hazardserve, SkyServe).
 - "KV transfer beats recompute" (ShuntServe measured the opposite for 8B on these GPUs).

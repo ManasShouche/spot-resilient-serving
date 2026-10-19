@@ -178,7 +178,7 @@ and write-through more so. With the fix and 12 seeds:
 ## Threats to validity
 - Hardware constants are assumed. Phase 2 measures them. The *orderings* must
   survive calibration, not the percentages.
-- The workload is synthetic. The real AgentX replay is blocked on data access.
+- The workload is synthetic. The real AgentX replay came later, in [phase1c-results.md](phase1c-results.md).
 - Replica updates land instantly, which flatters write-through. Restore latency from
   an object-store replica is modelled in §4b; from a peer's DRAM tier it is zero.
 - Evacuation traffic slows receivers only if `ingress_slowdown` > 0 (default 0,

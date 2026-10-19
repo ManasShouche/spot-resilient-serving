@@ -1,6 +1,6 @@
 [
  {
-  "file": "/Users/as-mac-1329/kvevac-runs/notice/20261008T113957Z/console.txt",
+  "file": "~/kvevac-runs/notice/20261008T113957Z/console.txt",
   "action": "terminate",
   "announced_notice_s": 118.07,
   "rebalance_lead_s": 1.0,

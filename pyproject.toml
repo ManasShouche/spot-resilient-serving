@@ -2,6 +2,8 @@
 name = "kvevac"
 version = "0.1.0"
 description = "Deadline-bounded KV-cache evacuation for LLM serving on spot instances."
+readme = "README.md"
+license = {text = "MIT"}
 requires-python = ">=3.12"
 dependencies = []
 

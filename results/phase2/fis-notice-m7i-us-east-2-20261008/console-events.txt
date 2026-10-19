@@ -1,11 +1,11 @@
 KVEVAC {"event": "job", "at": "2026-10-08T11:40:27+00:00", "stage": "boot", "msg": "self-terminate in 30 min; model NousResearch/Meta-Llama-3.1-8B-Instruct"}
 KVEVAC {"event": "job", "at": "2026-10-08T11:40:27+00:00", "stage": "install", "msg": "uv + pip"}
 KVEVAC {"event": "watching", "at": "2026-10-08T11:40:27.381429+00:00"}
-ip-172-31-35-176 login: KVEVAC {"event": "job", "at": "2026-10-08T11:40:29+00:00", "stage": "env", "msg": "GPU "}
+ip-<redacted> login: KVEVAC {"event": "job", "at": "2026-10-08T11:40:29+00:00", "stage": "env", "msg": "GPU "}
 KVEVAC {"event": "job", "at": "2026-10-08T11:40:29+00:00", "stage": "vllm", "msg": "starting server; model download and compile take a while"}
 KVEVAC {"event": "job", "at": "2026-10-08T11:40:35+00:00", "stage": "error", "msg": "vLLM died during startup"}
 KVEVAC {"event": "job", "at": "2026-10-08T11:40:35+00:00", "stage": "finished", "msg": "status 1; sending results"}
-KVEVAC-RESULT ac8411db4d21 ip-172-31-35-176 3 939 ac8411db4d210cce8b0b5e91e89f5355391f9a39318fe7350ce99e7d04591a2e
+KVEVAC-RESULT ac8411db4d21 ip-<redacted> 3 939 ac8411db4d210cce8b0b5e91e89f5355391f9a39318fe7350ce99e7d04591a2e
 KVEVAC-CHUNK ac8411db4d21 0 3 3a7d371e5ab1 H4sIAAAAAAAAA+1Y3W/bNhDPs/6Km14co5YsyZacqU9d0W7DkqLo3D4VMBiJtthIpMAPNVnR/71HOU49w5vXIk4wlL8HWfw6nnj3u+NZUmVqrcYnR0SEmKVp/4vY/e3f4zTJ4lkUTbPJSRTH2DiB9JhKbWCUJhLgRAqh/23eofH/KeSt/Snvwg9K8GPsYQ2cTaf/aP8p+sad/a2fxMksRftHx1BmFz+4/T954DeipLWfg/9KGPWGKkpkUY0vqCbBeU0aEkzCODj7JfidKy1Nof0RLlq1xi7p39sbXQlumzgzCeO072VNK6ReUCmFtGMXojQ1fSX0S2F4+cJ2n77HPaHpB4CThpYw6Oq6Gbz3h72MQvAlW32zDC0JV0shGyrVnSzesZKRhWqYlfSS7cpJRjBAScoUFSxxFISEkklaaCFvBkPf+/zYxjoC7vh/zfQCqaCNuvc9DvE/ipKd+D9J08jx/yEQe4+tgcNjYsN/G3VDTVgd1mJ1z3sc4n8ySXf5
 KVEVAC-CHUNK ac8411db4d21 1 3 08d6b031b4b0 n2WZ4/9DYCxaPb7qaEeKcYeXwPEl4+N1Ps+hz4vwsbLJcMl4yfhqk2hVSwu2ZAXRTHDAVLtO3CHlWt60gnGtQtFSTlhIWrZQVHZUDuB0TwLPYf8dYOhC0/Gx4f8HcXks+h/ifxKn2S7/p7PE8f8h8GdldCk+clBFRS0Fy57M88pAEiVZEEdBdAZxksdRnszg7fz5CIyiMFCbhUExAC2gILygdej98e7Fu2fP4ZNPMZxoe9NG1/JH4JO+8VXoPI7zqRX6JIryKLJT0BQramdd4mHbjkatbFPRehloKhvGiabAOEwiwMZT6EsX+K91y+f70Y6hPFLXWwqaDp5Ay1rcwZ5JLUgfK7E7sgVRMoHrs2yRTQPDrzhOCGrGzXWw4sa7FWan4yluh2OMxB6gjP5x7aHGEuMyThwouF1Fy588by6AlOXuUivtRhgJr5/NfxsBZbqiEpDu6O56PaIqWte2ypGG5x5uA6Cwv6C7suy/A3CqqhFcEvv8S1XDA9PDJVMV
 KVEVAC-CHUNK ac8411db4d21 2 3 7a5a52c4dd28 nNrn0Nset4FGVTngF1P0q0kO67oswLosh0I0DeElcKHRDzFDfLvFft5jMVRoy1q/vn4L3+ML+yTbTLXtqfZ0rS3XCW/joBunAPtt+I2tzaiaXFEg6/T6HepM0n0f2hfKX/Xpzs8vsIhFVpdG9npZBU17X/vhrQAtTMu/HwEWkRA/xTNYXxlucwzu+djRzsHBwcHBwcHBwcHBwcHBwcHB4cfCF/30SX4AKAAA
