@@ -113,8 +113,8 @@ The intervals are ±12–30 points and overlap throughout. On the real trace the
 no trend at all: the oracle does no better than recency. **Reuse prediction is a
 second-order lever**, which fits the real-trace finding that LRU is hard to beat
 (agentic-kv-cache: liveness policies did not beat LRU-leaf). The paper should treat
-the reuse estimator as a pluggable input, not a contribution, and the SOP should not
-lean on prediction.
+the reuse estimator as a pluggable input, not a contribution, and should not lean on
+prediction.
 
 ## 4. What changed in the model (for reviewers of the code)
 - New policies `inflight_replicate` and `pool`, and the `variants` rows mechanism.

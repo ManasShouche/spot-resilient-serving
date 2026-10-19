@@ -3,7 +3,7 @@
   instance | env: GPU NVIDIA L4
   instance | mem: used 0G avail 14G shm 0
   instance | mem: used 0G avail 14G shm 0
-  instance | phase3: nfs client ready; mounting 172.31.37.152
+  instance | phase3: nfs client ready; mounting <peer-ip>
   instance | phase3: tier on /mnt/peer
   instance | phase3: tier write bandwidth 1.09 GB/s
   instance | phase3: starting A (deferred) on :8001

@@ -1082,7 +1082,7 @@ PY
   tar -czf "$RUNS/$STAMP.tar.gz" -C "$RUNS" --exclude snapshot.txt --exclude py "$STAMP"
   echo
   say "everything from this run is in $RUNS/$STAMP.tar.gz"
-  say "download it (CloudShell: Actions > Download file) and attach it in the project thread"
+  say "download it (CloudShell: Actions > Download file) to keep it"
 }
 
 on_exit() {

@@ -73,7 +73,7 @@ Everything lands in `~/kvevac-runs/<UTC stamp>/` in CloudShell and is packed int
 `interference-host.json`, `interference-h2d.json`, `env.json` (vLLM, torch and CUDA
 versions, KV bytes per token), the job and vLLM log tails, `console.txt` (the merged
 console transcript) and `notice.json`. Download the tarball (Actions → Download file)
-and attach it in the project thread.
+to keep it.
 
 ### Settings
 Environment variables, e.g. `MAX_MIN=60 bash kvevac-aws.sh`: `INSTANCE_TYPE`
@@ -128,7 +128,7 @@ model download.
 1. **HuggingFace:** accept the Llama 3.1 license on the model page
    (`meta-llama/Llama-3.1-8B-Instruct`), then create a **read** token.
 2. **GitHub:** create a *fine-grained* personal access token. Repository access:
-   only `ManasShouche/spot-resilient-serving`. Permissions: **Contents: Read and
+   only your fork of this repository. Permissions: **Contents: Read and
    write**. Expiry: 7 days.
 3. Put both tokens into the Vast instance's environment variables as `HF_TOKEN` and
    `GH_TOKEN`. Never paste them into chat, a file, or the on-start script.
